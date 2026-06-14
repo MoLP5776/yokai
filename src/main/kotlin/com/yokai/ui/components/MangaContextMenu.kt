@@ -35,7 +35,6 @@ fun MangaContextMenu(
     onMarkAllRead: () -> Unit,
     onToggleMultiSelect: () -> Unit,
     onManageCategories: () -> Unit,
-    onRemoveSeries: () -> Unit,
 ) {
     if (!isVisible) return
 
@@ -79,15 +78,6 @@ fun MangaContextMenu(
                     onManageCategories()
                     onDismiss()
                 },
-            )
-            ContextMenuItem(
-                icon = Icons.Outlined.Delete,
-                label = "Remove series",
-                onClick = {
-                    onRemoveSeries()
-                    onDismiss()
-                },
-                isDestructive = true,
             )
         }
     }
