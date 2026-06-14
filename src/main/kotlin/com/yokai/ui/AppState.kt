@@ -150,6 +150,15 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
+    fun previousChapter() {
+        val current = readerChapter ?: return
+        val chapters = selectedSeriesChapters
+        val currentIndex = chapters.indexOfFirst { it.filePath == current.filePath }
+        if (currentIndex > 0) {
+            openReader(chapters[currentIndex - 1])
+        }
+    }
+
     fun closeReader() {
         readerChapter = null
         noNextChapterAvailable = false // Reset when reader is closed
