@@ -46,6 +46,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -55,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.gestures.detectTapGestures
 import com.yokai.metadata.MetadataRepository
 import com.yokai.metadata.SeriesMetadata
 import com.yokai.metadata.SeriesStatus
@@ -214,9 +215,6 @@ fun LibraryScreen(state: AppState) {
                 categoryDialogMetadata = metadata
                 showCategoryDialog = true
             },
-            onRemoveSeries = {
-                state.removeSeries(contextMenuSeriesDir!!)
-            },
         )
     }
 }
@@ -246,17 +244,18 @@ private fun SeriesCard(
                 cardLayoutCoordinates = coordinates
             }
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { offset -> onClick() },
-                )
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)
-                        if (event.buttons.isSecondaryPressed) {
-                            val position = event.changes.first().position
-                            cardLayoutCoordinates?.let {
-                                val windowPosition = it.localToWindow(position)
-                                onContextMenu(DpOffset(windowPosition.x.dp, windowPosition.y.dp))
+                        if (event.type == PointerEventType.Press) {
+                            if (event.buttons.isPrimaryPressed) {
+                                onClick()
+                            } else if (event.buttons.isSecondaryPressed) {
+                                cardLayoutCoordinates?.let {
+                                    val position = event.changes.first().position
+                                    val windowPosition = it.localToWindow(position)
+                                    onContextMenu(DpOffset(windowPosition.x.dp, windowPosition.y.dp))
+                                }
                             }
                         }
                     }
