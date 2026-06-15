@@ -64,7 +64,7 @@ fun MetadataEditorDialog(
     var description by remember(metadata) { mutableStateOf(metadata.description) }
     var author by remember(metadata) { mutableStateOf(metadata.author) }
     var artist by remember(metadata) { mutableStateOf(metadata.artist) }
-    var categories by remember(metadata) { mutableStateOf(metadata.categories.joinToString(", ")) }
+    var tags by remember(metadata) { mutableStateOf(metadata.tags.joinToString(", ")) } // Changed to tags
     var status by remember(metadata) { mutableStateOf(metadata.status) }
     var selectedCover by remember(metadata) { mutableStateOf<File?>(null) }
 
@@ -156,8 +156,8 @@ fun MetadataEditorDialog(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         OutlinedTextField(
-                            value = categories,
-                            onValueChange = { categories = it },
+                            value = tags,
+                            onValueChange = { tags = it },
                             label = { Text("Tags") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
@@ -188,7 +188,7 @@ fun MetadataEditorDialog(
                                     artist = artist.trim(),
                                     status = status,
                                     coverImagePath = copiedCoverPath ?: metadata.coverImagePath,
-                                    categories = categories
+                                    tags = tags
                                         .split(',')
                                         .map { it.trim() }
                                         .filter { it.isNotBlank() },

@@ -24,7 +24,7 @@ data class KeyBindings(
 
     private fun isKeybindingMatch(
         bindingString: String,
-        eventKeyString: String, // This is keyEvent.key.toString()
+        eventKeyString: String,
         ctrlPressed: Boolean,
         shiftPressed: Boolean,
         altPressed: Boolean
@@ -46,12 +46,10 @@ data class KeyBindings(
             }
         }
 
-        if (mainKey == null) return false // A keybinding must have a main key
+        if (mainKey == null) return false
 
-        // Compare main key
         if (mainKey != normalizedEventKey) return false
 
-        // Compare modifiers
         if (requiredCtrl != ctrlPressed) return false
         if (requiredShift != shiftPressed) return false
         if (requiredAlt != altPressed) return false

@@ -2,19 +2,7 @@ package com.yokai.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -25,16 +13,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.SelectAll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -290,7 +269,13 @@ private fun SeriesCard(
                             .background(MaterialTheme.colorScheme.primary)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
-                        Text(text = "$unread", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = "$unread",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 13.sp,
+                        )
                     }
                 }
                 if (isMultiSelectMode && isSelected) {
@@ -321,46 +306,6 @@ private fun SeriesCard(
                     lineHeight = 17.sp,
                 )
                 Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val statusColor = when (metadata.status) {
-                        SeriesStatus.ONGOING -> MaterialTheme.colorScheme.tertiary
-                        SeriesStatus.COMPLETED -> MaterialTheme.colorScheme.secondary
-                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
-                    }
-                    Box(
-                        Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(statusColor),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = metadata.status.name.lowercase().replaceFirstChar { it.uppercase() },
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                    )
-                }
-
-                if (metadata.categories.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        metadata.categories.take(2).forEach { category ->
-                            SuggestionChip(onClick = {}, label = { Text(category, fontSize = 9.sp) })
-                        }
-                        if (metadata.categories.size > 2) {
-                            Box(
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                            ) {
-                                Text("+${metadata.categories.size - 2}", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
-                            }
-                        }
-                    }
-                }
             }
         }
     }

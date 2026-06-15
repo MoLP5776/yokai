@@ -26,7 +26,6 @@ class AppState(private val scope: CoroutineScope) {
         private set
 
     var keybindings by mutableStateOf(KeyBindingsRepository.load())
-        // Removed private set to allow access from KeyBindingsScreen.kt
 
     var seriesList by mutableStateOf<List<File>>(emptyList())
         private set
@@ -68,6 +67,10 @@ class AppState(private val scope: CoroutineScope) {
         }
         refreshLibrary()
         restartWatcher()
+        // Set default category on startup
+        prefs.defaultCategory?.let { category ->
+            selectedCategory = category
+        }
     }
 
     fun refreshLibrary() {
@@ -238,6 +241,12 @@ class AppState(private val scope: CoroutineScope) {
         PreferencesRepository.save(prefs)
         aniListClient?.close()
         aniListClient = if (prefs.aniListAccessToken.isNotBlank()) AniListClient(prefs.aniListAccessToken) else null
+    }
+
+    fun updateDefaultCategory(category: String?) {
+        prefs = prefs.copy(defaultCategory = category)
+        PreferencesRepository.save(prefs)
+        selectedCategory = category
     }
 
     val allCategories: List<String>

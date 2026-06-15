@@ -11,7 +11,6 @@ private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
 
 object CbzReader {
 
-    // Custom comparator for natural sorting (alphanumeric sorting)
     private val naturalOrderComparator: Comparator<String> = Comparator<String> { s1, s2 ->
         val regex = "(\\d+|\\D+)".toRegex()
         val parts1 = regex.findAll(s1).map { it.value }.toList()
@@ -26,17 +25,14 @@ object CbzReader {
             val num2 = part2.toIntOrNull()
 
             if (num1 != null && num2 != null) {
-                // Both are numbers, compare numerically
                 val cmp = num1.compareTo(num2)
                 if (cmp != 0) return@Comparator cmp
             } else {
-                // At least one is not a number, compare lexicographically
                 val cmp = part1.compareTo(part2)
                 if (cmp != 0) return@Comparator cmp
             }
             i++
         }
-        // If one list of parts is a prefix of the other, the longer one comes last
         parts1.size.compareTo(parts2.size)
     }
 
@@ -46,7 +42,7 @@ object CbzReader {
                 .filter { !it.isDirectory }
                 .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
                 .map { it.name }
-                .sortedWith(naturalOrderComparator) // Use custom natural order comparator
+                .sortedWith(naturalOrderComparator)
                 .toList()
         }
     }
@@ -57,14 +53,13 @@ object CbzReader {
                 val allEntries = zip.entries().asSequence()
                     .filter { !it.isDirectory }
                     .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
-                    .associateBy { it.name } // Create a map from name to ZipEntry for quick lookup
+                    .associateBy { it.name }
 
                 val sortedEntryNames = allEntries.keys
-                    .sortedWith(naturalOrderComparator) // Sort only the names
+                    .sortedWith(naturalOrderComparator)
 
                 val targetEntryName = sortedEntryNames.getOrNull(pageIndex) ?: return null
 
-                // Retrieve the actual ZipEntry using the sorted name
                 val entry = allEntries[targetEntryName] ?: return null
 
                 val bytes = zip.getInputStream(entry).readBytes()
