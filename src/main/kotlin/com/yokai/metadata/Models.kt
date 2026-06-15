@@ -31,6 +31,7 @@ data class SeriesMetadata(
     val status: SeriesStatus = SeriesStatus.UNKNOWN,
     val coverImagePath: String? = null,
     val categories: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
     val aniListId: Int? = null,
     val readingStatus: ReadingStatus = ReadingStatus.NONE,
     val chapterReadState: Map<String, Boolean> = emptyMap(),
