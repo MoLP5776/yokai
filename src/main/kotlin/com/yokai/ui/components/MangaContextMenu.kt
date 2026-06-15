@@ -4,10 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAddCheck
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
@@ -45,7 +47,7 @@ fun MangaContextMenu(
         Column(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                .width(200.dp),
+                .width(150.dp),
         ) {
             ContextMenuItem(
                 icon = Icons.Outlined.Visibility,
@@ -64,7 +66,7 @@ fun MangaContextMenu(
                 },
             )
             ContextMenuItem(
-                icon = Icons.Outlined.PlaylistAddCheck,
+                icon = Icons.AutoMirrored.Outlined.PlaylistAddCheck,
                 label = "Multi-select",
                 onClick = {
                     onToggleMultiSelect()
@@ -99,6 +101,7 @@ private fun ContextMenuItem(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
