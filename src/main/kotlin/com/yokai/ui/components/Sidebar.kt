@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.LocalLibrary
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -67,21 +68,13 @@ fun Sidebar(state: AppState) {
                 state.currentScreen = Screen.Library
             },
         )
-        SidebarItem(
-            icon = Icons.Outlined.History,
-            label = "Recently read",
-            selected = false,
-            onClick = { state.currentScreen = Screen.Library },
-        )
-        SidebarItem(
-            icon = Icons.Outlined.Favorite,
-            label = "Favorites",
-            selected = false,
-            onClick = { state.currentScreen = Screen.Library },
-        )
 
         Spacer(Modifier.height(16.dp))
-        Divider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.surfaceVariant
+        )
         Spacer(Modifier.height(12.dp))
 
         if (state.allCategories.isNotEmpty()) {
@@ -105,7 +98,11 @@ fun Sidebar(state: AppState) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Divider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            )
         }
 
         Spacer(Modifier.weight(1f))
