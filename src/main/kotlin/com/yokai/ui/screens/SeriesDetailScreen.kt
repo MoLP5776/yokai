@@ -24,10 +24,17 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.KeyboardDoubleArrowLeft
+import androidx.compose.material.icons.outlined.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -60,6 +67,7 @@ import com.yokai.ui.components.CoverArt
 import com.yokai.ui.components.MetadataEditorDialog
 import com.yokai.ui.components.Sidebar
 import java.io.File
+import kotlin.math.ceil
 
 @Composable
 fun SeriesDetailScreen(state: AppState) {
@@ -69,7 +77,17 @@ fun SeriesDetailScreen(state: AppState) {
     val seriesDir = state.selectedSeries ?: return
     var sortDescending by remember { mutableStateOf(state.prefs.defaultSortDescending) }
     var showMetadataEditor by remember { mutableStateOf(false) }
-    val sortedChapters = if (sortDescending) chapters.sortedByDescending { it.chapterFloat } else chapters.sortedBy { it.chapterFloat }
+    val sortedChapters =
+        if (sortDescending) chapters.sortedByDescending { it.chapterFloat } else chapters.sortedBy { it.chapterFloat }
+
+    var currentPage by remember { mutableStateOf(1) }
+    var chaptersPerPage by remember { mutableStateOf(10) }
+    var showChaptersPerPageDropdown by remember { mutableStateOf(false) }
+
+    val totalPages = ceil(sortedChapters.size.toDouble() / chaptersPerPage).toInt().coerceAtLeast(1)
+    val startIndex = (currentPage - 1) * chaptersPerPage
+    val endIndex = (startIndex + chaptersPerPage).coerceAtMost(sortedChapters.size)
+    val paginatedChapters = sortedChapters.subList(startIndex, endIndex)
 
     if (showMetadataEditor) {
         MetadataEditorDialog(
@@ -111,9 +129,9 @@ fun SeriesDetailScreen(state: AppState) {
                 }
             }
 
-            Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
-            LazyColumn(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.weight(1f)) {
                 item {
                     Row(
                         modifier = Modifier
@@ -140,10 +158,19 @@ fun SeriesDetailScreen(state: AppState) {
                             )
                             if (metadata.author.isNotBlank()) {
                                 Spacer(Modifier.height(4.dp))
-                                Text(metadata.author, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f))
+                                Text(
+                                    metadata.author,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f)
+                                )
                             }
                             if (metadata.artist.isNotBlank() && metadata.artist != metadata.author) {
-                                Text("Art: ${metadata.artist}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Art: ${metadata.artist}",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                                )
                             }
 
                             Spacer(Modifier.height(10.dp))
@@ -152,11 +179,11 @@ fun SeriesDetailScreen(state: AppState) {
                                 if (metadata.aniListId != null) AniListChip()
                             }
 
-                            if (metadata.categories.isNotEmpty()) {
+                            if (metadata.tags.isNotEmpty()) {
                                 Spacer(Modifier.height(8.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    metadata.categories.forEach { category ->
-                                        SuggestionChip(onClick = {}, label = { Text(category, fontSize = 11.sp) })
+                                    metadata.tags.forEach { tag ->
+                                        SuggestionChip(onClick = {}, label = { Text(tag, fontSize = 11.sp) })
                                     }
                                 }
                             }
@@ -177,7 +204,11 @@ fun SeriesDetailScreen(state: AppState) {
                             val readCount = readState.values.count { it }
                             val total = chapters.size
                             if (total > 0) {
-                                Text("$readCount / $total chapters read", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
+                                Text(
+                                    "$readCount / $total chapters read",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                                )
                                 Spacer(Modifier.height(6.dp))
                                 LinearProgressIndicator(
                                     progress = { readCount.toFloat() / total },
@@ -190,7 +221,7 @@ fun SeriesDetailScreen(state: AppState) {
                 }
 
                 item {
-                    Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+                    HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -198,7 +229,12 @@ fun SeriesDetailScreen(state: AppState) {
                             .background(MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 20.dp, vertical = 8.dp),
                     ) {
-                        Text("${chapters.size} chapters", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                        Text(
+                            "${chapters.size} chapters",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.weight(1f)
+                        )
                         if (state.selectedChapters.isNotEmpty()) {
                             TextButton(onClick = { state.markSelectedChaptersRead(seriesDir, true) }) {
                                 Icon(
@@ -243,7 +279,7 @@ fun SeriesDetailScreen(state: AppState) {
                     )
                 }
 
-                items(sortedChapters) { chapter ->
+                items(paginatedChapters) { chapter ->
                     val isRead = readState[chapter.filename] == true
                     val isSelected = state.selectedChapters.contains(chapter.filename)
                     ChapterRow(
@@ -254,10 +290,78 @@ fun SeriesDetailScreen(state: AppState) {
                         onToggleRead = { state.markChapterRead(seriesDir, chapter, !isRead) },
                         onToggleSelect = { state.toggleChapterSelection(chapter.filename) },
                     )
-                    Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    HorizontalDivider(
+                        Modifier,
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
                 }
+            }
 
-                item { Spacer(Modifier.height(40.dp)) }
+            if (sortedChapters.isNotEmpty()) {
+                HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Page $currentPage of $totalPages",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { currentPage = 1 },
+                            enabled = currentPage > 1
+                        ) {
+                            Icon(Icons.Outlined.KeyboardDoubleArrowLeft, "First page")
+                        }
+                        IconButton(
+                            onClick = { currentPage = (currentPage - 1).coerceAtLeast(1) },
+                            enabled = currentPage > 1
+                        ) {
+                            Icon(Icons.Outlined.KeyboardArrowLeft, "Previous page")
+                        }
+                        IconButton(
+                            onClick = { currentPage = (currentPage + 1).coerceAtMost(totalPages) },
+                            enabled = currentPage < totalPages
+                        ) {
+                            Icon(Icons.Outlined.KeyboardArrowRight, "Next page")
+                        }
+                        IconButton(
+                            onClick = { currentPage = totalPages },
+                            enabled = currentPage < totalPages
+                        ) {
+                            Icon(Icons.Outlined.KeyboardDoubleArrowRight, "Last page")
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Box {
+                            TextButton(onClick = { showChaptersPerPageDropdown = true }) {
+                                Text("$chaptersPerPage / page")
+                                Icon(Icons.Outlined.KeyboardArrowDown, "Chapters per page")
+                            }
+                            DropdownMenu(
+                                expanded = showChaptersPerPageDropdown,
+                                onDismissRequest = { showChaptersPerPageDropdown = false }
+                            ) {
+                                listOf(10, 20, 50, 100).forEach { size ->
+                                    DropdownMenuItem(
+                                        text = { Text("$size / page") },
+                                        onClick = {
+                                            chaptersPerPage = size
+                                            currentPage = 1
+                                            showChaptersPerPageDropdown = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -281,12 +385,32 @@ private fun ChapterColumnHeader(
             onCheckedChange = { if (it) onSelectAll() else onClearAll() },
             modifier = Modifier.width(56.dp),
         )
-        Text("CHAPTER", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f), modifier = Modifier.weight(1f))
-        Text("LANGUAGE", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f), modifier = Modifier.width(90.dp))
-        Text("TRANSLATOR", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f), modifier = Modifier.width(140.dp))
-        Text("STATUS", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f), modifier = Modifier.width(70.dp))
+        Text(
+            "CHAPTER",
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            "LANGUAGE",
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+            modifier = Modifier.width(90.dp)
+        )
+        Text(
+            "TRANSLATOR",
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+            modifier = Modifier.width(140.dp)
+        )
+        Text(
+            "STATUS",
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+            modifier = Modifier.width(70.dp)
+        )
     }
-    Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+    HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
 @Composable
@@ -317,14 +441,14 @@ private fun ChapterRow(
 
         Column(Modifier.weight(1f)) {
             Text(
-                text = chapter.filename, // Display the full filename as the main title
+                text = chapter.filename,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "Chapter ${chapter.chapterNumber}", // Display chapter number as secondary text
+                text = "Chapter ${chapter.chapterNumber}",
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 maxLines = 1,
@@ -348,9 +472,19 @@ private fun ChapterRow(
 
         IconButton(onClick = onToggleRead, modifier = Modifier.width(70.dp)) {
             if (isRead) {
-                Icon(Icons.Outlined.CheckCircle, "Mark unread", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Outlined.CheckCircle,
+                    "Mark unread",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
             } else {
-                Icon(Icons.Outlined.RadioButtonUnchecked, "Mark read", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f), modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Outlined.RadioButtonUnchecked,
+                    "Mark read",
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -381,6 +515,11 @@ private fun AniListChip() {
             .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.16f), RoundedCornerShape(20.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
-        Text("AniList linked", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
+        Text(
+            "AniList linked",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
