@@ -19,19 +19,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.KeyboardDoubleArrowLeft
 import androidx.compose.material.icons.outlined.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -51,18 +50,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yokai.metadata.ChapterInfo
 import com.yokai.metadata.LANGUAGE_FLAGS
 import com.yokai.metadata.LANGUAGE_NAMES
-import com.yokai.metadata.MetadataRepository
 import com.yokai.metadata.SeriesMetadata
 import com.yokai.metadata.SeriesStatus
 import com.yokai.ui.AppState
 import com.yokai.ui.Screen
+import com.yokai.ui.components.ChapterContextMenu
 import com.yokai.ui.components.CoverArt
 import com.yokai.ui.components.MetadataEditorDialog
 import com.yokai.ui.components.Sidebar
@@ -83,6 +89,10 @@ fun SeriesDetailScreen(state: AppState) {
     var currentPage by remember { mutableStateOf(1) }
     var chaptersPerPage by remember { mutableStateOf(10) }
     var showChaptersPerPageDropdown by remember { mutableStateOf(false) }
+
+    var showChapterContextMenu by remember { mutableStateOf(false) }
+    var contextMenuOffset by remember { mutableStateOf(DpOffset.Zero) }
+    var contextMenuChapter by remember { mutableStateOf<ChapterInfo?>(null) }
 
     val totalPages = ceil(sortedChapters.size.toDouble() / chaptersPerPage).toInt().coerceAtLeast(1)
     val startIndex = (currentPage - 1) * chaptersPerPage
@@ -113,7 +123,7 @@ fun SeriesDetailScreen(state: AppState) {
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
                 IconButton(onClick = { state.currentScreen = Screen.Library }) {
-                    Icon(Icons.Outlined.ArrowBack, "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
                 }
                 Text(
                     metadata.title,
@@ -289,6 +299,11 @@ fun SeriesDetailScreen(state: AppState) {
                         onOpen = { state.openReader(chapter) },
                         onToggleRead = { state.markChapterRead(seriesDir, chapter, !isRead) },
                         onToggleSelect = { state.toggleChapterSelection(chapter.filename) },
+                        onRightClick = { offset ->
+                            contextMenuOffset = offset
+                            contextMenuChapter = chapter
+                            showChapterContextMenu = true
+                        }
                     )
                     HorizontalDivider(
                         Modifier,
@@ -324,13 +339,13 @@ fun SeriesDetailScreen(state: AppState) {
                             onClick = { currentPage = (currentPage - 1).coerceAtLeast(1) },
                             enabled = currentPage > 1
                         ) {
-                            Icon(Icons.Outlined.KeyboardArrowLeft, "Previous page")
+                            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, "Previous page")
                         }
                         IconButton(
                             onClick = { currentPage = (currentPage + 1).coerceAtMost(totalPages) },
                             enabled = currentPage < totalPages
                         ) {
-                            Icon(Icons.Outlined.KeyboardArrowRight, "Next page")
+                            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "Next page")
                         }
                         IconButton(
                             onClick = { currentPage = totalPages },
@@ -364,6 +379,18 @@ fun SeriesDetailScreen(state: AppState) {
                 }
             }
         }
+    }
+
+    contextMenuChapter?.let { chapter ->
+        ChapterContextMenu(
+            isVisible = showChapterContextMenu,
+            offset = contextMenuOffset,
+            onDismiss = { showChapterContextMenu = false },
+            onViewChapter = { state.openReader(chapter) },
+            onToggleRead = { state.markChapterRead(seriesDir, chapter, !readState[chapter.filename]!!) },
+            isChapterRead = readState[chapter.filename]!!,
+            onSelectPrevious = { state.selectPrevious(chapter) },
+        )
     }
 }
 
@@ -421,17 +448,36 @@ private fun ChapterRow(
     onOpen: () -> Unit,
     onToggleRead: () -> Unit,
     onToggleSelect: () -> Unit,
+    onRightClick: (DpOffset) -> Unit,
 ) {
     val flag = LANGUAGE_FLAGS[chapter.languageCode] ?: chapter.languageCode.uppercase()
     val langName = LANGUAGE_NAMES[chapter.languageCode] ?: chapter.languageCode.uppercase()
+
+    var rowOffset by remember { mutableStateOf(Offset.Zero) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .onGloballyPositioned { coordinates ->
+                rowOffset = coordinates.positionInWindow()
+            }
             .clickable(onClick = onOpen)
             .alpha(if (isRead) 0.52f else 1f)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
+                            val position = event.changes.first().position
+                            // Calculate global click position
+                            val globalClickOffset = rowOffset + position
+                            onRightClick(DpOffset(globalClickOffset.x.toDp(), globalClickOffset.y.toDp()))
+                        }
+                    }
+                }
+            },
     ) {
         Checkbox(
             checked = isSelected,
