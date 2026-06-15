@@ -123,7 +123,7 @@ fun LibraryScreen(state: AppState) {
                 }
             }
 
-            Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
             val error = state.libraryError
             if (state.filteredSeriesList.isEmpty()) {

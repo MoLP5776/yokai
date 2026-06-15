@@ -19,7 +19,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -122,7 +122,7 @@ fun CategorySelectionDialog(
 
                 if (categoriesToDisplay.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
-                    Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+                    HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                 }
 
                 Spacer(Modifier.height(12.dp))

@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +53,7 @@ fun KeyBindingsScreen(state: AppState) {
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
                 IconButton(onClick = { state.currentScreen = Screen.Settings }) {
-                    Icon(Icons.Outlined.ArrowBack, "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
                 }
                 Text(
                     "Key Bindings",
@@ -64,7 +64,7 @@ fun KeyBindingsScreen(state: AppState) {
                 )
             }
 
-            Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
             LazyColumn(
                 modifier = Modifier
@@ -79,7 +79,7 @@ fun KeyBindingsScreen(state: AppState) {
                 }
 
                 item {
-                    Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+                    HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     Text("Chapter Navigation", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     KeyBindingRow("Next Chapter", bindings.nextChapterKey) { bindings = bindings.copy(nextChapterKey = it) }
                     KeyBindingRow("Previous Chapter", bindings.prevChapterKey) { bindings = bindings.copy(prevChapterKey = it) }
@@ -88,7 +88,7 @@ fun KeyBindingsScreen(state: AppState) {
                 }
 
                 item {
-                    Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+                    HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     Text("Reader Controls", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     KeyBindingRow("Exit Reader", bindings.exitReaderKey) { bindings = bindings.copy(exitReaderKey = it) }
                     KeyBindingRow("Close", bindings.closeKey) { bindings = bindings.copy(closeKey = it) }

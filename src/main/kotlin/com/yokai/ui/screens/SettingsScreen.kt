@@ -15,9 +15,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -56,7 +56,7 @@ fun SettingsScreen(state: AppState) {
             ) {
                 Text("Settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
             }
-            Divider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
 
             Column(
                 modifier = Modifier
