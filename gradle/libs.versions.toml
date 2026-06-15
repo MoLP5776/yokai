@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.0.21"
+kotlin = "2.4.0"
 compose = "1.7.3"
 ktor = "3.0.3"
 serialization = "1.7.3"
