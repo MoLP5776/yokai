@@ -162,6 +162,33 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
+    fun clearNoNextChapter() {
+        noNextChapterAvailable = false
+    }
+
+    fun previousChapterAtLastPage() {
+        val current = readerChapter ?: return
+        val chapters = selectedSeriesChapters
+        val currentIndex = chapters.indexOfFirst { it.filePath == current.filePath }
+        if (currentIndex > 0) {
+            openReaderAtLastPage(chapters[currentIndex - 1])
+        }
+    }
+
+    var openAtLastPage by mutableStateOf(false)
+        private set
+
+    fun consumeOpenAtLastPage() {
+        openAtLastPage = false
+    }
+
+    private fun openReaderAtLastPage(chapter: ChapterInfo) {
+        openAtLastPage = true
+        readerChapter = chapter
+        noNextChapterAvailable = false
+        currentScreen = Screen.Reader
+    }
+
     fun closeReader() {
         readerChapter = null
         noNextChapterAvailable = false // Reset when reader is closed

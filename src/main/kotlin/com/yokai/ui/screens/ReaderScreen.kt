@@ -78,7 +78,12 @@ fun ReaderScreen(state: AppState) {
 
     LaunchedEffect(chapter.filePath) {
         pageNames = withContext(Dispatchers.IO) { CbzReader.listPages(chapter.filePath) }
-        pageIndex = 0
+        pageIndex = if (state.openAtLastPage) {
+            state.consumeOpenAtLastPage()
+            pageNames.lastIndex.coerceAtLeast(0)
+        } else {
+            0
+        }
         focusRequester.requestFocus()
     }
 
@@ -88,7 +93,16 @@ fun ReaderScreen(state: AppState) {
     }
 
     fun previousPage() {
-        if (pageIndex > 0) pageIndex -= 1
+        when {
+            state.noNextChapterAvailable -> {
+                state.clearNoNextChapter()
+                pageIndex = pageNames.lastIndex.coerceAtLeast(0)
+            }
+            pageIndex == 0 -> {
+                state.previousChapterAtLastPage()
+            }
+            else -> pageIndex -= 1
+        }
     }
 
     fun nextPage() {
