@@ -188,6 +188,15 @@ class AppState(private val scope: CoroutineScope) {
         selectedChapters = selectedSeriesChapters.map { it.filename }.toSet()
     }
 
+    fun selectPreviousChapters(seriesDir: File, currentChapter: ChapterInfo) {
+        val chapters = selectedSeriesChapters
+        val currentIndex = chapters.indexOfFirst { it.filename == currentChapter.filename }
+        if (currentIndex > 0) {
+            val chaptersToSelect = chapters.subList(0, currentIndex).map { it.filename }.toSet()
+            selectedChapters = chaptersToSelect
+        }
+    }
+
     fun markSelectedChaptersRead(seriesDir: File, read: Boolean) {
         selectedChapters.forEach { filename ->
             MetadataRepository.markChapterRead(seriesDir, filename, read)
