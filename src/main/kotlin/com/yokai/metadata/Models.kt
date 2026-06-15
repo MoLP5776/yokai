@@ -25,6 +25,7 @@ enum class ReadingStatus {
 @Serializable
 data class SeriesMetadata(
     val title: String,
+    val displayName: String = "",
     val description: String = "",
     val author: String = "",
     val artist: String = "",
@@ -35,7 +36,9 @@ data class SeriesMetadata(
     val aniListId: Int? = null,
     val readingStatus: ReadingStatus = ReadingStatus.NONE,
     val chapterReadState: Map<String, Boolean> = emptyMap(),
-)
+) {
+    val effectiveTitle: String get() = displayName.ifBlank { title }
+}
 
 data class ChapterInfo(
     val filename: String,

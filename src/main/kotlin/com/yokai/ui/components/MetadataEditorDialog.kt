@@ -61,6 +61,7 @@ fun MetadataEditorDialog(
     onSave: (SeriesMetadata) -> Unit,
 ) {
     var title by remember(metadata) { mutableStateOf(metadata.title) }
+    var displayName by remember(metadata) { mutableStateOf(metadata.displayName) }
     var description by remember(metadata) { mutableStateOf(metadata.description) }
     var author by remember(metadata) { mutableStateOf(metadata.author) }
     var artist by remember(metadata) { mutableStateOf(metadata.artist) }
@@ -130,6 +131,15 @@ fun MetadataEditorDialog(
                             value = title,
                             onValueChange = { title = it },
                             label = { Text("Title") },
+                            supportingText = { Text("Folder name — not shown in the UI") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = displayName,
+                            onValueChange = { displayName = it },
+                            label = { Text("Display name") },
+                            supportingText = { Text("Shown in the library and used for sorting. Leave blank to use the folder name.") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -183,6 +193,7 @@ fun MetadataEditorDialog(
                             onSave(
                                 metadata.copy(
                                     title = title.ifBlank { seriesDir.name },
+                                    displayName = displayName.trim(),
                                     description = description.trim(),
                                     author = author.trim(),
                                     artist = artist.trim(),

@@ -67,4 +67,47 @@ object CbzReader {
             }
         }.getOrNull()
     }
+
+    fun loadTwoPages(file: File, pageIndex: Int): Pair<ImageBitmap?, ImageBitmap?> {
+        return runCatching {
+            ZipFile(file).use { zip ->
+                val allEntries = zip.entries().asSequence()
+                    .filter { !it.isDirectory }
+                    .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
+                    .associateBy { it.name }
+
+                val sortedNames = allEntries.keys.sortedWith(naturalOrderComparator)
+
+                fun loadAt(index: Int): ImageBitmap? {
+                    val name = sortedNames.getOrNull(index) ?: return null
+                    val entry = allEntries[name] ?: return null
+                    val bytes = zip.getInputStream(entry).readBytes()
+                    return Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                }
+
+                Pair(loadAt(pageIndex), loadAt(pageIndex + 1))
+            }
+        }.getOrElse { Pair(null, null) }
+    }
+
+    fun loadAllPages(file: File): List<ImageBitmap> {
+        return runCatching {
+            ZipFile(file).use { zip ->
+                val allEntries = zip.entries().asSequence()
+                    .filter { !it.isDirectory }
+                    .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
+                    .associateBy { it.name }
+
+                allEntries.keys
+                    .sortedWith(naturalOrderComparator)
+                    .mapNotNull { name ->
+                        val entry = allEntries[name] ?: return@mapNotNull null
+                        runCatching {
+                            val bytes = zip.getInputStream(entry).readBytes()
+                            Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                        }.getOrNull()
+                    }
+            }
+        }.getOrElse { emptyList() }
+    }
 }

@@ -2,6 +2,7 @@ package com.yokai.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,18 +14,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.SwipeDown
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,9 +43,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -47,10 +58,10 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.yokai.metadata.ChapterInfo
 import com.yokai.reader.CbzReader
 import com.yokai.ui.AppState
 import kotlinx.coroutines.Dispatchers
@@ -63,15 +74,18 @@ fun ReaderScreen(state: AppState) {
     val chapter = state.readerChapter ?: return
     var pageNames by remember(chapter.filePath) { mutableStateOf<List<String>>(emptyList()) }
     var pageIndex by remember(chapter.filePath) { mutableIntStateOf(0) }
+
     var pageImage by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
+    var pageImageRight by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
+
+    var allPages by remember(chapter.filePath) { mutableStateOf<List<ImageBitmap>>(emptyList()) }
 
     var showChapterDropdown by remember { mutableStateOf(false) }
     var showPageDropdown by remember { mutableStateOf(false) }
 
-    // Page Style and Fit states
     var pageStyle by remember { mutableStateOf(PageStyle.SINGLE) }
-    var containToWidth by remember { mutableStateOf(true) }
-    var containToHeight by remember { mutableStateOf(false) }
+    var containToWidth by remember { mutableStateOf(false) }
+    var containToHeight by remember { mutableStateOf(true) }
     var stretchSmallPages by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
@@ -84,12 +98,40 @@ fun ReaderScreen(state: AppState) {
         } else {
             0
         }
+        if (pageStyle == PageStyle.VERTICAL) {
+            allPages = withContext(Dispatchers.IO) { CbzReader.loadAllPages(chapter.filePath) }
+        }
         focusRequester.requestFocus()
     }
 
-    LaunchedEffect(chapter.filePath, pageIndex) {
-        pageImage = null
-        pageImage = withContext(Dispatchers.IO) { CbzReader.loadPage(chapter.filePath, pageIndex) }
+    LaunchedEffect(chapter.filePath, pageIndex, pageStyle) {
+        when (pageStyle) {
+            PageStyle.SINGLE -> {
+                pageImage = null
+                pageImage = withContext(Dispatchers.IO) { CbzReader.loadPage(chapter.filePath, pageIndex) }
+                pageImageRight = null
+            }
+            PageStyle.DOUBLE -> {
+                pageImage = null
+                pageImageRight = null
+                val (left, right) = withContext(Dispatchers.IO) {
+                    CbzReader.loadTwoPages(chapter.filePath, pageIndex)
+                }
+                pageImage = left
+                pageImageRight = right
+            }
+            PageStyle.VERTICAL -> {
+                if (allPages.isEmpty()) {
+                    allPages = withContext(Dispatchers.IO) { CbzReader.loadAllPages(chapter.filePath) }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(pageStyle) {
+        if (pageStyle == PageStyle.VERTICAL && allPages.isEmpty() && pageNames.isNotEmpty()) {
+            allPages = withContext(Dispatchers.IO) { CbzReader.loadAllPages(chapter.filePath) }
+        }
     }
 
     fun previousPage() {
@@ -98,18 +140,17 @@ fun ReaderScreen(state: AppState) {
                 state.clearNoNextChapter()
                 pageIndex = pageNames.lastIndex.coerceAtLeast(0)
             }
-            pageIndex == 0 -> {
-                state.previousChapterAtLastPage()
-            }
+            pageIndex == 0 -> state.previousChapterAtLastPage()
+            pageStyle == PageStyle.DOUBLE -> pageIndex = (pageIndex - 2).coerceAtLeast(0)
             else -> pageIndex -= 1
         }
     }
 
     fun nextPage() {
-        if (pageIndex < pageNames.lastIndex) {
-            pageIndex += 1
+        val step = if (pageStyle == PageStyle.DOUBLE) 2 else 1
+        if (pageIndex + step <= pageNames.lastIndex) {
+            pageIndex += step
         } else {
-            // Mark current chapter as read before moving to the next
             val currentSeriesDir = state.selectedSeries
             val currentChapter = state.readerChapter
             if (currentSeriesDir != null && currentChapter != null) {
@@ -117,6 +158,14 @@ fun ReaderScreen(state: AppState) {
             }
             state.nextChapter()
         }
+    }
+
+    val contentScale = when {
+        containToWidth && containToHeight -> ContentScale.Fit
+        containToWidth -> ContentScale.FillWidth
+        containToHeight -> ContentScale.FillHeight
+        stretchSmallPages -> ContentScale.FillBounds
+        else -> ContentScale.Fit
     }
 
     Row(
@@ -141,204 +190,369 @@ fun ReaderScreen(state: AppState) {
                         Key.Backspace, Key.Escape -> { state.closeReader(); true }
                         else -> false
                     }
-                } else {
-                    false
-                }
+                } else false
             },
     ) {
-        // Side panel
+
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(250.dp) // Fixed width for the side panel
+                .width(260.dp)
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(8.dp)
+                .padding(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = { state.closeReader() }) {
                     Icon(Icons.Outlined.Close, "Close reader")
                 }
                 Text(
-                    text = state.selectedSeriesMetadata?.title ?: "Series Name",
+                    text = state.selectedSeriesMetadata?.effectiveTitle ?: "Reader",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
             }
 
-            Spacer(Modifier.size(16.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Chapter Navigation
+            Text(
+                "Chapter",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                letterSpacing = 0.8.sp,
+            )
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { state.previousChapter() }) {
-                    Text("<", fontSize = 24.sp)
-                }
-                Box {
+                NavButton(label = "◀", onClick = { state.previousChapter() }, modifier = Modifier.weight(1f))
+                Box(modifier = Modifier.weight(2f), contentAlignment = Alignment.Center) {
                     Text(
-                        text = "Chapter ${chapter.chapterNumber.removePrefix("ch. 0").removePrefix("ch. ")}",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "Ch. ${chapter.chapterNumber}",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { showChapterDropdown = true }
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.clickable { showChapterDropdown = true },
                     )
                     DropdownMenu(
                         expanded = showChapterDropdown,
                         onDismissRequest = { showChapterDropdown = false },
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
                     ) {
                         state.selectedSeriesChapters.forEach { ch ->
                             DropdownMenuItem(
-                                text = { Text("Chapter ${ch.chapterNumber.removePrefix("ch. 0").removePrefix("ch. ")}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface) },
-                                onClick = {
-                                    state.openReader(ch)
-                                    showChapterDropdown = false
-                                },
+                                text = { Text("Ch. ${ch.chapterNumber}", fontSize = 13.sp) },
+                                onClick = { state.openReader(ch); showChapterDropdown = false },
                             )
                         }
                     }
                 }
-                IconButton(onClick = { state.nextChapter() }) {
-                    Text(">", fontSize = 24.sp)
-                }
+                NavButton(label = "▶", onClick = { state.nextChapter() }, modifier = Modifier.weight(1f))
             }
 
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Page Navigation
+            Text(
+                "Page",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                letterSpacing = 0.8.sp,
+            )
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { pageIndex = 0 }) { // Beginning of chapter
-                    Text("|<", fontSize = 20.sp)
-                }
-                IconButton(onClick = { previousPage() }) { // Back one page
-                    Text("<", fontSize = 20.sp)
-                }
-                Box {
+                NavButton(label = "|◀", onClick = { pageIndex = 0 }, modifier = Modifier.weight(1f))
+                NavButton(label = "◀", onClick = { previousPage() }, modifier = Modifier.weight(1f))
+                Box(modifier = Modifier.weight(2f), contentAlignment = Alignment.Center) {
+                    val displayPage = if (pageStyle == PageStyle.DOUBLE)
+                        "${pageIndex + 1}-${(pageIndex + 2).coerceAtMost(pageNames.size)}"
+                    else
+                        "${pageIndex + 1}"
                     Text(
-                        text = "${pageIndex + 1} / ${pageNames.size}",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.clickable { showPageDropdown = true }
+                        text = "$displayPage / ${pageNames.size}",
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.clickable { showPageDropdown = true },
                     )
                     DropdownMenu(
                         expanded = showPageDropdown,
                         onDismissRequest = { showPageDropdown = false },
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
                     ) {
-                        (0 until pageNames.size).forEach { index ->
+                        pageNames.indices.forEach { index ->
                             DropdownMenuItem(
-                                text = { Text("Page ${index + 1}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface) },
-                                onClick = {
-                                    pageIndex = index
-                                    showPageDropdown = false
-                                },
+                                text = { Text("Page ${index + 1}", fontSize = 12.sp, lineHeight = 12.sp) },
+                                onClick = { pageIndex = index; showPageDropdown = false },
                             )
                         }
                     }
                 }
-                IconButton(onClick = { nextPage() }) { // Forward one page
-                    Text(">", fontSize = 20.sp)
-                }
-                IconButton(onClick = { pageIndex = pageNames.lastIndex }) { // End of chapter
-                    Text(">|", fontSize = 20.sp)
-                }
+                NavButton(label = "▶", onClick = { nextPage() }, modifier = Modifier.weight(1f))
+                NavButton(label = "▶|", onClick = { pageIndex = pageNames.lastIndex.coerceAtLeast(0) }, modifier = Modifier.weight(1f))
             }
 
-            Spacer(Modifier.size(16.dp))
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            Spacer(Modifier.height(16.dp))
 
-            // Collapsible Page Style
-            var pageStyleExpanded by remember { mutableStateOf(false) }
-            Column {
-                Text(
-                    text = "Page Style",
-                    modifier = Modifier.clickable { pageStyleExpanded = !pageStyleExpanded },
-                    fontWeight = FontWeight.Bold
+            Text(
+                "Page Style",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                letterSpacing = 0.8.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PageStyleButton(
+                    icon = Icons.AutoMirrored.Outlined.MenuBook,
+                    label = "Single",
+                    selected = pageStyle == PageStyle.SINGLE,
+                    modifier = Modifier.weight(1f),
+                    onClick = { pageStyle = PageStyle.SINGLE },
                 )
-                if (pageStyleExpanded) {
-                    Column(modifier = Modifier.padding(start = 8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = pageStyle == PageStyle.SINGLE, onClick = { pageStyle = PageStyle.SINGLE })
-                            Text("Single")
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = pageStyle == PageStyle.DOUBLE, onClick = { pageStyle = PageStyle.DOUBLE })
-                            Text("Double")
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = pageStyle == PageStyle.VERTICAL, onClick = { pageStyle = PageStyle.VERTICAL })
-                            Text("Vertical")
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.size(8.dp))
-
-            // Collapsible Page Fit
-            var pageFitExpanded by remember { mutableStateOf(false) }
-            Column {
-                Text(
-                    text = "Page Fit",
-                    modifier = Modifier.clickable { pageFitExpanded = !pageFitExpanded },
-                    fontWeight = FontWeight.Bold
+                PageStyleButton(
+                    icon = Icons.Outlined.AutoStories,
+                    label = "Double",
+                    selected = pageStyle == PageStyle.DOUBLE,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        if (pageIndex % 2 != 0) pageIndex = (pageIndex - 1).coerceAtLeast(0)
+                        pageStyle = PageStyle.DOUBLE
+                    },
                 )
-                if (pageFitExpanded) {
-                    Column(modifier = Modifier.padding(start = 8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = containToWidth, onCheckedChange = { containToWidth = it })
-                            Text("Contain to width")
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = containToHeight, onCheckedChange = { containToHeight = it })
-                            Text("Contain to height")
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = stretchSmallPages, onCheckedChange = { stretchSmallPages = it })
-                            Text("Stretch small pages")
-                        }
-                    }
-                }
+                PageStyleButton(
+                    icon = Icons.Outlined.SwipeDown,
+                    label = "Vertical",
+                    selected = pageStyle == PageStyle.VERTICAL,
+                    modifier = Modifier.weight(1f),
+                    onClick = { pageStyle = PageStyle.VERTICAL },
+                )
             }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                "Page Fit",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                letterSpacing = 0.8.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            FitCheckRow("Contain to width", containToWidth) { containToWidth = it }
+            FitCheckRow("Contain to height", containToHeight) { containToHeight = it }
+            FitCheckRow("Stretch small pages", stretchSmallPages) { stretchSmallPages = it }
         }
 
-        // Main content area for the manga page
         Box(
             modifier = Modifier
-                .weight(1f) // Fills remaining space
+                .weight(1f)
                 .fillMaxHeight()
-                .pointerInput(pageNames, pageIndex) {
-                    detectTapGestures { offset ->
-                        if (offset.x < size.width / 2) previousPage() else nextPage()
+                .pointerInput(pageNames, pageIndex, pageStyle) {
+                    if (pageStyle != PageStyle.VERTICAL) {
+                        detectTapGestures { offset ->
+                            if (offset.x < size.width / 2) previousPage() else nextPage()
+                        }
                     }
                 },
             contentAlignment = Alignment.Center,
         ) {
-            val image = pageImage
             when {
-                state.noNextChapterAvailable -> Text("No next chapter available", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
-                pageNames.isEmpty() -> Text("No image pages in this archive", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
-                image == null -> Text("Loading page...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
-                else -> {
-                    // TODO: Implement actual rendering logic based on pageStyle and pageFit states
-                    // For now, it displays a single page with ContentScale.Fit
-                    Image(
-                        bitmap = image,
-                        contentDescription = pageNames.getOrNull(pageIndex),
-                        contentScale = ContentScale.Fit, // This will need to change based on pageFit
-                        modifier = Modifier
-                            .fillMaxSize(0.95f)
-                            .padding(12.dp),
+                state.noNextChapterAvailable -> {
+                    Text(
+                        "No next chapter available",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     )
+                }
+
+                pageNames.isEmpty() -> {
+                    Text(
+                        "No image pages in this archive",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
+                }
+
+                pageStyle == PageStyle.VERTICAL -> {
+                    if (allPages.isEmpty()) {
+                        Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            allPages.forEachIndexed { index, bitmap ->
+                                Image(
+                                    bitmap = bitmap,
+                                    contentDescription = "Page ${index + 1}",
+                                    contentScale = if (containToWidth) ContentScale.FillWidth else ContentScale.Fit,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            // Tap at bottom of vertical strip → next chapter
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(80.dp)
+                                    .clickable {
+                                        val dir = state.selectedSeries
+                                        val ch = state.readerChapter
+                                        if (dir != null && ch != null) state.markChapterRead(dir, ch, true)
+                                        state.nextChapter()
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "▼  Next chapter",
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                    fontSize = 13.sp,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                pageStyle == PageStyle.DOUBLE -> {
+                    val left = pageImage
+                    val right = pageImageRight
+                    when {
+                        left == null -> Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        else -> Row(
+                            modifier = Modifier.fillMaxSize().padding(12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Image(
+                                bitmap = left,
+                                contentDescription = "Page ${pageIndex + 1}",
+                                contentScale = contentScale,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                            if (right != null) {
+                                Image(
+                                    bitmap = right,
+                                    contentDescription = "Page ${pageIndex + 2}",
+                                    contentScale = contentScale,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    val image = pageImage
+                    if (image == null) {
+                        Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    } else {
+                        Image(
+                            bitmap = image,
+                            contentDescription = pageNames.getOrNull(pageIndex),
+                            contentScale = contentScale,
+                            modifier = Modifier.fillMaxSize(0.95f).padding(12.dp),
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PageStyleButton(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val borderColor = if (selected) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.surfaceVariant
+    val bgColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+    else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun NavButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp),
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+
+@Composable
+private fun FitCheckRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 2.dp),
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f))
     }
 }

@@ -63,7 +63,10 @@ object MetadataRepository {
                     file.name == METADATA_FILENAME || file.extension.lowercase() in chapterExtensions
                 } == true
             }
-            ?.sortedBy { it.name.lowercase() }
+            ?.sortedBy { dir ->
+                val meta = runCatching { load(dir) }.getOrNull()
+                (meta?.effectiveTitle ?: dir.name).lowercase()
+            }
             ?.toList()
             ?: emptyList()
     }
