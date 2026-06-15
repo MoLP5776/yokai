@@ -188,7 +188,7 @@ class AppState(private val scope: CoroutineScope) {
         selectedChapters = selectedSeriesChapters.map { it.filename }.toSet()
     }
 
-    fun selectPreviousChapters(seriesDir: File, currentChapter: ChapterInfo) {
+    fun selectPrevious(currentChapter: ChapterInfo) {
         val chapters = selectedSeriesChapters
         val currentIndex = chapters.indexOfFirst { it.filename == currentChapter.filename }
         if (currentIndex > 0) {
@@ -311,6 +311,7 @@ class AppState(private val scope: CoroutineScope) {
                             }
                             refreshLibrary()
                         }
+
                         is LibraryEvent.ChapterRemoved -> {
                             if (event.seriesDir == selectedSeries) {
                                 selectedSeriesChapters = ChapterParser.scanSeries(event.seriesDir)
