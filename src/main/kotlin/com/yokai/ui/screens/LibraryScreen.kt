@@ -297,7 +297,7 @@ private fun SeriesCard(
 
             Column(Modifier.padding(10.dp)) {
                 Text(
-                    text = metadata.title,
+                    text = metadata.effectiveTitle,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
