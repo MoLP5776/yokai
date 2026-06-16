@@ -17,17 +17,26 @@ private val json = Json {
 object MetadataRepository {
     fun load(seriesDir: File): SeriesMetadata {
         val file = File(seriesDir, METADATA_FILENAME)
-        if (!file.exists()) return SeriesMetadata(title = seriesDir.name)
+        if (!file.exists()) {
+            println("Metadata file not found for series: ${seriesDir.name}. Returning default metadata.")
+            return SeriesMetadata(title = seriesDir.name)
+        }
 
         return runCatching {
             json.decodeFromString<SeriesMetadata>(file.readText())
-        }.getOrElse {
+        }.getOrElse { e ->
+            println("Error deserializing metadata for series ${seriesDir.name}: ${e.message}. Returning default metadata.")
             SeriesMetadata(title = seriesDir.name)
         }
     }
 
     fun save(seriesDir: File, metadata: SeriesMetadata) {
-        File(seriesDir, METADATA_FILENAME).writeText(json.encodeToString(metadata))
+        runCatching {
+            File(seriesDir, METADATA_FILENAME).writeText(json.encodeToString(metadata))
+        }.onFailure { e ->
+            println("Error saving metadata for series ${seriesDir.name}: ${e.message}")
+            // Optionally, you could log this more formally or show a user-facing error
+        }
     }
 
     fun resolveCoverFile(seriesDir: File, metadata: SeriesMetadata): File? {

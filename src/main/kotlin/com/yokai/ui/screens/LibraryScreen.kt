@@ -54,7 +54,7 @@ fun LibraryScreen(state: AppState) {
     var contextMenuSeriesDir by remember { mutableStateOf<File?>(null) }
     var showCategoryDialog by remember { mutableStateOf(false) }
     var categoryDialogSeriesDir by remember { mutableStateOf<File?>(null) }
-    var categoryDialogMetadata by remember { mutableStateOf(state.selectedSeriesMetadata) }
+    var categoryDialogMetadata by remember { mutableStateOf(state.selectedSeriesMetadata) } // Reverted to original initialization
 
     var showMultiSelectCategoryDialog by remember { mutableStateOf(false) }
     var multiSelectCategorySeriesList by remember { mutableStateOf<Set<File>>(emptySet()) }
@@ -117,10 +117,6 @@ fun LibraryScreen(state: AppState) {
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 )
-                Spacer(Modifier.width(16.dp))
-                IconButton(onClick = { state.refreshLibrary() }) {
-                    Icon(Icons.Outlined.Refresh, "Refresh library")
-                }
             }
 
             HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
@@ -191,7 +187,7 @@ fun LibraryScreen(state: AppState) {
             },
             onManageCategories = {
                 categoryDialogSeriesDir = contextMenuSeriesDir
-                categoryDialogMetadata = metadata
+                categoryDialogMetadata = metadata // Directly assign the already loaded and non-null metadata
                 showCategoryDialog = true
             },
         )
