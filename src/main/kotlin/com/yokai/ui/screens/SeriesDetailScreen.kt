@@ -289,7 +289,8 @@ fun SeriesDetailScreen(state: AppState) {
                                 if (chapters.isEmpty()) {
                                     null
                                 } else {
-                                    val firstUnread = chapters.sortedBy { it.chapterFloat }.firstOrNull { !readState.getOrDefault(it.filename, false) }
+                                    val firstUnread = chapters.sortedBy { it.chapterFloat }
+                                        .firstOrNull { !readState.getOrDefault(it.filename, false) }
                                     firstUnread
                                 }
                             }

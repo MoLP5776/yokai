@@ -28,9 +28,9 @@ object AniListAuth {
 
     fun buildAuthUrl(): String =
         "https://anilist.co/api/v2/oauth/authorize" +
-            "?client_id=$CLIENT_ID" +
-            "&redirect_uri=$REDIRECT_URI" +
-            "&response_type=token"
+                "?client_id=$CLIENT_ID" +
+                "&redirect_uri=$REDIRECT_URI" +
+                "&response_type=token"
 }
 
 @Serializable

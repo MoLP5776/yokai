@@ -129,7 +129,8 @@ fun LibraryScreen(state: AppState) {
                 )
             } else {
                 if (state.isMultiSelectMode) {
-                    MultiSelectToolbar(state,
+                    MultiSelectToolbar(
+                        state,
                         onManageCategories = {
                             multiSelectCategorySeriesList = state.selectedSeriesList
                             showMultiSelectCategoryDialog = true
@@ -169,7 +170,8 @@ fun LibraryScreen(state: AppState) {
     }
 
     if (contextMenuSeriesDir != null) {
-        val metadata = state.seriesMetadataMap[contextMenuSeriesDir!!] ?: MetadataRepository.load(contextMenuSeriesDir!!)
+        val metadata =
+            state.seriesMetadataMap[contextMenuSeriesDir!!] ?: MetadataRepository.load(contextMenuSeriesDir!!)
         MangaContextMenu(
             isVisible = contextMenuVisible,
             offset = contextMenuOffset,
