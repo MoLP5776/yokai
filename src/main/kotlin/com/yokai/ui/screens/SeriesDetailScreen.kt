@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.KeyboardDoubleArrowLeft
 import androidx.compose.material.icons.outlined.KeyboardDoubleArrowRight
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -279,6 +280,27 @@ fun SeriesDetailScreen(state: AppState) {
                             }
                             IconButton(onClick = { state.markAllChaptersRead(seriesDir, true) }) {
                                 Icon(Icons.Outlined.DoneAll, "Mark all read", modifier = Modifier.size(20.dp))
+                            }
+
+                            val nextChapterToRead = remember(chapters, readState) {
+                                if (chapters.isEmpty()) {
+                                    null
+                                } else {
+                                    val firstUnread = chapters.sortedBy { it.chapterFloat }.firstOrNull { !readState.getOrDefault(it.filename, false) }
+                                    firstUnread
+                                }
+                            }
+
+                            if (nextChapterToRead != null) {
+                                TextButton(onClick = { state.openReader(nextChapterToRead) }) {
+                                    Icon(
+                                        Icons.Outlined.PlayArrow,
+                                        contentDescription = "Continue",
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Continue", fontSize = 13.sp)
+                                }
                             }
                         }
                     }
