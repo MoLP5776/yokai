@@ -111,6 +111,7 @@ fun ReaderScreen(state: AppState) {
                 pageImage = withContext(Dispatchers.IO) { CbzReader.loadPage(chapter.filePath, pageIndex) }
                 pageImageRight = null
             }
+
             PageStyle.DOUBLE -> {
                 pageImage = null
                 pageImageRight = null
@@ -120,6 +121,7 @@ fun ReaderScreen(state: AppState) {
                 pageImage = left
                 pageImageRight = right
             }
+
             PageStyle.VERTICAL -> {
                 if (allPages.isEmpty()) {
                     allPages = withContext(Dispatchers.IO) { CbzReader.loadAllPages(chapter.filePath) }
@@ -140,6 +142,7 @@ fun ReaderScreen(state: AppState) {
                 state.clearNoNextChapter()
                 pageIndex = pageNames.lastIndex.coerceAtLeast(0)
             }
+
             pageIndex == 0 -> state.previousChapterAtLastPage()
             pageStyle == PageStyle.DOUBLE -> pageIndex = (pageIndex - 2).coerceAtLeast(0)
             else -> pageIndex -= 1
@@ -181,13 +184,24 @@ fun ReaderScreen(state: AppState) {
                             if (keyEvent.isCtrlPressed) pageIndex = pageNames.lastIndex else nextPage()
                             true
                         }
+
                         Key.DirectionLeft -> {
                             if (keyEvent.isCtrlPressed) pageIndex = 0 else previousPage()
                             true
                         }
-                        Key.RightBracket -> { state.nextChapter(); true }
-                        Key.LeftBracket -> { state.previousChapter(); true }
-                        Key.Backspace, Key.Escape -> { state.closeReader(); true }
+
+                        Key.RightBracket -> {
+                            state.nextChapter(); true
+                        }
+
+                        Key.LeftBracket -> {
+                            state.previousChapter(); true
+                        }
+
+                        Key.Backspace, Key.Escape -> {
+                            state.closeReader(); true
+                        }
+
                         else -> false
                     }
                 } else false
@@ -300,7 +314,11 @@ fun ReaderScreen(state: AppState) {
                     }
                 }
                 NavButton(label = "▶", onClick = { nextPage() }, modifier = Modifier.weight(1f))
-                NavButton(label = "▶|", onClick = { pageIndex = pageNames.lastIndex.coerceAtLeast(0) }, modifier = Modifier.weight(1f))
+                NavButton(
+                    label = "▶|",
+                    onClick = { pageIndex = pageNames.lastIndex.coerceAtLeast(0) },
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(Modifier.height(16.dp))
@@ -435,7 +453,11 @@ fun ReaderScreen(state: AppState) {
                     val left = pageImage
                     val right = pageImageRight
                     when {
-                        left == null -> Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        left == null -> Text(
+                            "Loading...",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+
                         else -> Row(
                             modifier = Modifier.fillMaxSize().padding(12.dp),
                             horizontalArrangement = Arrangement.Center,

@@ -86,7 +86,12 @@ fun MetadataEditorDialog(
                     .padding(24.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("Edit metadata", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(
+                        "Edit metadata",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Outlined.Close, "Close")
                     }
@@ -189,7 +194,8 @@ fun MetadataEditorDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val copiedCoverPath = selectedCover?.let { MetadataRepository.copyCoverImage(seriesDir, it) }
+                            val copiedCoverPath =
+                                selectedCover?.let { MetadataRepository.copyCoverImage(seriesDir, it) }
                             onSave(
                                 metadata.copy(
                                     title = title.ifBlank { seriesDir.name },

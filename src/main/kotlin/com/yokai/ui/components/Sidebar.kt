@@ -130,7 +130,8 @@ private fun SidebarItem(
     onClick: () -> Unit,
 ) {
     val background = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else Color.Transparent
-    val foreground = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+    val foreground =
+        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -144,13 +145,19 @@ private fun SidebarItem(
     ) {
         Icon(icon, contentDescription = label, tint = foreground, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
-        Text(label, fontSize = 14.sp, color = foreground, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
+        Text(
+            label,
+            fontSize = 14.sp,
+            color = foreground,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+        )
     }
 }
 
 @Composable
 private fun CategoryItem(label: String, selected: Boolean, onClick: () -> Unit) {
-    val foreground = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
+    val foreground =
+        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,

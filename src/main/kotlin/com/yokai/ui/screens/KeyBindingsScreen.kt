@@ -81,21 +81,39 @@ fun KeyBindingsScreen(state: AppState) {
                 item {
                     HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     Text("Chapter Navigation", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    KeyBindingRow("Next Chapter", bindings.nextChapterKey) { bindings = bindings.copy(nextChapterKey = it) }
-                    KeyBindingRow("Previous Chapter", bindings.prevChapterKey) { bindings = bindings.copy(prevChapterKey = it) }
-                    KeyBindingRow("Next Chapter (Alt)", bindings.nextChapterAltKey) { bindings = bindings.copy(nextChapterAltKey = it) }
-                    KeyBindingRow("Previous Chapter (Alt)", bindings.prevChapterAltKey) { bindings = bindings.copy(prevChapterAltKey = it) }
+                    KeyBindingRow("Next Chapter", bindings.nextChapterKey) {
+                        bindings = bindings.copy(nextChapterKey = it)
+                    }
+                    KeyBindingRow("Previous Chapter", bindings.prevChapterKey) {
+                        bindings = bindings.copy(prevChapterKey = it)
+                    }
+                    KeyBindingRow("Next Chapter (Alt)", bindings.nextChapterAltKey) {
+                        bindings = bindings.copy(nextChapterAltKey = it)
+                    }
+                    KeyBindingRow("Previous Chapter (Alt)", bindings.prevChapterAltKey) {
+                        bindings = bindings.copy(prevChapterAltKey = it)
+                    }
                 }
 
                 item {
                     HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
                     Text("Reader Controls", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    KeyBindingRow("Exit Reader", bindings.exitReaderKey) { bindings = bindings.copy(exitReaderKey = it) }
+                    KeyBindingRow("Exit Reader", bindings.exitReaderKey) {
+                        bindings = bindings.copy(exitReaderKey = it)
+                    }
                     KeyBindingRow("Close", bindings.closeKey) { bindings = bindings.copy(closeKey = it) }
-                    KeyBindingRow("Toggle Reading Direction", bindings.toggleReadingDirKey) { bindings = bindings.copy(toggleReadingDirKey = it) }
-                    KeyBindingRow("Toggle Page Style", bindings.togglePageStyleKey) { bindings = bindings.copy(togglePageStyleKey = it) }
-                    KeyBindingRow("Toggle Double Page Offset", bindings.toggleDoublePageOffsetKey) { bindings = bindings.copy(toggleDoublePageOffsetKey = it) }
-                    KeyBindingRow("Toggle Fullscreen", bindings.toggleFullscreenKey) { bindings = bindings.copy(toggleFullscreenKey = it) }
+                    KeyBindingRow("Toggle Reading Direction", bindings.toggleReadingDirKey) {
+                        bindings = bindings.copy(toggleReadingDirKey = it)
+                    }
+                    KeyBindingRow("Toggle Page Style", bindings.togglePageStyleKey) {
+                        bindings = bindings.copy(togglePageStyleKey = it)
+                    }
+                    KeyBindingRow("Toggle Double Page Offset", bindings.toggleDoublePageOffsetKey) {
+                        bindings = bindings.copy(toggleDoublePageOffsetKey = it)
+                    }
+                    KeyBindingRow("Toggle Fullscreen", bindings.toggleFullscreenKey) {
+                        bindings = bindings.copy(toggleFullscreenKey = it)
+                    }
                 }
 
                 item {

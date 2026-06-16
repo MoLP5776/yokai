@@ -66,10 +66,38 @@ data class KeyBindings(
         if (isKeybindingMatch(prevChapterAltKey, eventKey, ctrlPressed, shiftPressed, altPressed)) return "prevChapter"
         if (isKeybindingMatch(exitReaderKey, eventKey, ctrlPressed, shiftPressed, altPressed)) return "exitReader"
         if (isKeybindingMatch(closeKey, eventKey, ctrlPressed, shiftPressed, altPressed)) return "closeReader"
-        if (isKeybindingMatch(toggleReadingDirKey, eventKey, ctrlPressed, shiftPressed, altPressed)) return "toggleReadingDir"
-        if (isKeybindingMatch(togglePageStyleKey, eventKey, ctrlPressed, shiftPressed, altPressed)) return "togglePageStyle"
-        if (isKeybindingMatch(toggleDoublePageOffsetKey, eventKey, ctrlPressed, shiftPressed, altPressed)) return "toggleDoublePageOffset"
-        if (isKeybindingMatch(toggleFullscreenKey, eventKey, ctrlPressed, shiftPressed, altPressed)) return "toggleFullscreen"
+        if (isKeybindingMatch(
+                toggleReadingDirKey,
+                eventKey,
+                ctrlPressed,
+                shiftPressed,
+                altPressed
+            )
+        ) return "toggleReadingDir"
+        if (isKeybindingMatch(
+                togglePageStyleKey,
+                eventKey,
+                ctrlPressed,
+                shiftPressed,
+                altPressed
+            )
+        ) return "togglePageStyle"
+        if (isKeybindingMatch(
+                toggleDoublePageOffsetKey,
+                eventKey,
+                ctrlPressed,
+                shiftPressed,
+                altPressed
+            )
+        ) return "toggleDoublePageOffset"
+        if (isKeybindingMatch(
+                toggleFullscreenKey,
+                eventKey,
+                ctrlPressed,
+                shiftPressed,
+                altPressed
+            )
+        ) return "toggleFullscreen"
 
         return null
     }

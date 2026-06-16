@@ -134,7 +134,10 @@ fun CategorySelectionDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            RoundedCornerShape(6.dp)
+                        )
                         .padding(8.dp),
                 ) {
                     BasicTextField(
@@ -150,7 +153,11 @@ fun CategorySelectionDialog(
                         singleLine = true,
                         decorationBox = { innerTextField ->
                             if (newCategoryText.isEmpty()) {
-                                Text("Type category name...", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                Text(
+                                    "Type category name...",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
                             }
                             innerTextField()
                         },
