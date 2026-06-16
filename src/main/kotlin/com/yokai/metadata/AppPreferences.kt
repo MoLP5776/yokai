@@ -1,9 +1,8 @@
 package com.yokai.metadata
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.io.File
+import kotlinx.serialization.*
+import kotlinx.serialization.json.Json
 
 @Serializable
 data class AppPreferences(

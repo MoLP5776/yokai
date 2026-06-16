@@ -1,25 +1,13 @@
 package com.yokai.ui
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import com.yokai.anilist.AniListClient
-import com.yokai.metadata.ChapterInfo
-import com.yokai.metadata.KeyBindings
-import com.yokai.metadata.KeyBindingsRepository
-import com.yokai.metadata.MetadataRepository
-import com.yokai.metadata.PreferencesRepository
-import com.yokai.metadata.SeriesMetadata
+import com.yokai.metadata.*
 import com.yokai.reader.ChapterParser
-import com.yokai.watcher.LibraryEvent
-import com.yokai.watcher.LibraryWatcher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.yokai.watcher.*
 import java.io.File
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
 
 class AppState(private val scope: CoroutineScope) {
     var prefs by mutableStateOf(PreferencesRepository.load())
