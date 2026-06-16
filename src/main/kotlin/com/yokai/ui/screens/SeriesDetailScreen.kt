@@ -123,7 +123,10 @@ fun SeriesDetailScreen(state: AppState) {
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                IconButton(onClick = { state.currentScreen = Screen.Library }) {
+                IconButton(onClick = {
+                    state.clearChapterSelection()
+                    state.currentScreen = Screen.Library
+                }) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
                 }
                 Text(
