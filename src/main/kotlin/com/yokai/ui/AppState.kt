@@ -50,6 +50,8 @@ class AppState(private val scope: CoroutineScope) {
 
     var seriesMetadataMap by mutableStateOf<Map<File, SeriesMetadata>>(emptyMap())
         private set
+    var seriesChapterCounts by mutableStateOf<Map<File, Int>>(emptyMap())
+        private set
 
     var isMultiSelectMode by mutableStateOf(false)
         private set
@@ -79,6 +81,7 @@ class AppState(private val scope: CoroutineScope) {
             seriesList = emptyList()
             libraryError = null
             seriesMetadataMap = emptyMap()
+            seriesChapterCounts = emptyMap()
             return
         }
 
@@ -87,6 +90,7 @@ class AppState(private val scope: CoroutineScope) {
             seriesList = emptyList()
             libraryError = "Library folder does not exist."
             seriesMetadataMap = emptyMap()
+            seriesChapterCounts = emptyMap()
             return
         }
 
@@ -94,6 +98,7 @@ class AppState(private val scope: CoroutineScope) {
         val discoveredSeries = MetadataRepository.discoverSeries(rootFile)
         seriesList = discoveredSeries
         seriesMetadataMap = discoveredSeries.associateWith { MetadataRepository.load(it) }
+        seriesChapterCounts = discoveredSeries.associateWith { ChapterParser.scanSeries(it).size }
     }
 
     fun selectSeries(dir: File) {
@@ -242,6 +247,9 @@ class AppState(private val scope: CoroutineScope) {
             seriesMetadataMap = seriesMetadataMap.toMutableMap().apply {
                 remove(dir)
             }
+            seriesChapterCounts = seriesChapterCounts.toMutableMap().apply {
+                remove(dir)
+            }
             seriesList = seriesList.filter { it != dir }
             if (dir == selectedSeries) {
                 selectedSeries = null
@@ -330,23 +338,31 @@ class AppState(private val scope: CoroutineScope) {
                     when (event) {
                         is LibraryEvent.SeriesAdded -> refreshLibrary()
                         is LibraryEvent.ChapterAdded -> {
+                            // Update chapter count for the specific series
+                            seriesChapterCounts = seriesChapterCounts.toMutableMap().apply {
+                                this[event.seriesDir] = ChapterParser.scanSeries(event.seriesDir).size
+                            }
                             if (event.seriesDir == selectedSeries) {
                                 selectedSeriesChapters = ChapterParser.scanSeries(event.seriesDir)
                             }
                             seriesMetadataMap = seriesMetadataMap.toMutableMap().apply {
                                 this[event.seriesDir] = MetadataRepository.load(event.seriesDir)
                             }
-                            refreshLibrary()
+                            refreshLibrary() // Refresh the entire library to update UI
                         }
 
                         is LibraryEvent.ChapterRemoved -> {
+                            // Update chapter count for the specific series
+                            seriesChapterCounts = seriesChapterCounts.toMutableMap().apply {
+                                this[event.seriesDir] = ChapterParser.scanSeries(event.seriesDir).size
+                            }
                             if (event.seriesDir == selectedSeries) {
                                 selectedSeriesChapters = ChapterParser.scanSeries(event.seriesDir)
                             }
                             seriesMetadataMap = seriesMetadataMap.toMutableMap().apply {
                                 this[event.seriesDir] = MetadataRepository.load(event.seriesDir)
                             }
-                            refreshLibrary()
+                            refreshLibrary() // Refresh the entire library to update UI
                         }
                     }
                 }

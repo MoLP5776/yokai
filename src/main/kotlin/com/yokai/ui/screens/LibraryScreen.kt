@@ -9,9 +9,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -91,7 +91,7 @@ fun LibraryScreen(state: AppState) {
                     state.updateSeriesCategories(seriesDir, categories)
                 }
                 showMultiSelectCategoryDialog = false
-                state.toggleMultiSelectMode() // Exit multi-select after saving categories
+                state.toggleMultiSelectMode()
             },
         )
     }
@@ -118,8 +118,8 @@ fun LibraryScreen(state: AppState) {
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 )
                 Spacer(Modifier.width(16.dp))
-                IconButton(onClick = { state.currentScreen = Screen.Settings }) {
-                    Icon(Icons.Outlined.Add, "Add series")
+                IconButton(onClick = { state.refreshLibrary() }) {
+                    Icon(Icons.Outlined.Refresh, "Refresh library")
                 }
             }
 
@@ -208,9 +208,7 @@ private fun SeriesCard(
     isSelected: Boolean
 ) {
     val metadata = state.seriesMetadataMap[seriesDir] ?: MetadataRepository.load(seriesDir)
-    val chapters = remember(seriesDir) {
-        seriesDir.listFiles()?.count { it.extension.lowercase() in setOf("cbz", "zip") } ?: 0
-    }
+    val chapters = state.seriesChapterCounts[seriesDir] ?: 0
     val readCount = state.readChapterCount(seriesDir)
     val unread = chapters - readCount
 
