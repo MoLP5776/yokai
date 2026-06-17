@@ -3,8 +3,9 @@ package com.yokai.ui
 import androidx.compose.runtime.*
 import com.yokai.anilist.AniListClient
 import com.yokai.metadata.*
-import com.yokai.reader.ChapterParser
+import com.yokai.reader.*
 import com.yokai.watcher.*
+import kotlinx.coroutines.*
 import java.io.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
@@ -57,7 +58,7 @@ class AppState(private val scope: CoroutineScope) {
         }
         refreshLibrary()
         restartWatcher()
-        // Set default category on startup
+
         prefs.defaultCategory?.let { category ->
             selectedCategory = category
         }
@@ -133,6 +134,9 @@ class AppState(private val scope: CoroutineScope) {
         readerChapter = chapter
         noNextChapterAvailable = false // Reset when a new chapter is opened
         currentScreen = Screen.Reader
+        scope.launch(Dispatchers.IO) {
+            CbzReader.extractChapter(chapter.filePath)
+        }
     }
 
     fun nextChapter() {
@@ -180,6 +184,9 @@ class AppState(private val scope: CoroutineScope) {
         readerChapter = chapter
         noNextChapterAvailable = false
         currentScreen = Screen.Reader
+        scope.launch(Dispatchers.IO) {
+            CbzReader.extractChapter(chapter.filePath)
+        }
     }
 
     fun closeReader() {
@@ -326,7 +333,6 @@ class AppState(private val scope: CoroutineScope) {
                     when (event) {
                         is LibraryEvent.SeriesAdded -> refreshLibrary()
                         is LibraryEvent.ChapterAdded -> {
-                            // Update chapter count for the specific series
                             seriesChapterCounts = seriesChapterCounts.toMutableMap().apply {
                                 this[event.seriesDir] = ChapterParser.scanSeries(event.seriesDir).size
                             }
@@ -336,11 +342,10 @@ class AppState(private val scope: CoroutineScope) {
                             seriesMetadataMap = seriesMetadataMap.toMutableMap().apply {
                                 this[event.seriesDir] = MetadataRepository.load(event.seriesDir)
                             }
-                            refreshLibrary() // Refresh the entire library to update UI
+                            refreshLibrary()
                         }
 
                         is LibraryEvent.ChapterRemoved -> {
-                            // Update chapter count for the specific series
                             seriesChapterCounts = seriesChapterCounts.toMutableMap().apply {
                                 this[event.seriesDir] = ChapterParser.scanSeries(event.seriesDir).size
                             }
@@ -350,7 +355,7 @@ class AppState(private val scope: CoroutineScope) {
                             seriesMetadataMap = seriesMetadataMap.toMutableMap().apply {
                                 this[event.seriesDir] = MetadataRepository.load(event.seriesDir)
                             }
-                            refreshLibrary() // Refresh the entire library to update UI
+                            refreshLibrary()
                         }
                     }
                 }

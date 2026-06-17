@@ -34,6 +34,46 @@ object CbzReader {
         parts1.size.compareTo(parts2.size)
     }
 
+    /**
+     * Extracts all image pages from [cbzFile] into:
+     *   ~/.config/yokai/extracted/<cbzFile.nameWithoutExtension>/
+     *
+     * The entire extracted/ directory is wiped first so only one chapter
+     * is ever present on disk at a time, mirroring Houdoku's behaviour.
+     *
+     * Returns the directory the pages were extracted into, or null on failure.
+     * This is a blocking call — always invoke it on Dispatchers.IO.
+     */
+    fun extractChapter(cbzFile: File): File? {
+        return runCatching {
+            val extractRoot = File(
+                System.getProperty("user.home"),
+                ".config/yokai/extracted"
+            )
+
+            if (extractRoot.exists()) extractRoot.deleteRecursively()
+            extractRoot.mkdirs()
+
+            val chapterDir = File(extractRoot, cbzFile.nameWithoutExtension)
+            chapterDir.mkdirs()
+
+            ZipFile(cbzFile).use { zip ->
+                zip.entries().asSequence()
+                    .filter { !it.isDirectory }
+                    .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
+                    .forEach { entry ->
+
+                        val outFile = File(chapterDir, File(entry.name).name)
+                        zip.getInputStream(entry).use { input ->
+                            outFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                    }
+            }
+
+            chapterDir
+        }.getOrNull()
+    }
+
     fun listPages(file: File): List<String> {
         return ZipFile(file).use { zip ->
             zip.entries().asSequence()
