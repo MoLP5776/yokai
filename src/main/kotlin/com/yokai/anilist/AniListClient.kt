@@ -1,142 +1,381 @@
 package com.yokai.anilist
 
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.Serializable
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.*
 
-private const val ANILIST_API = "https://graphql.anilist.co"
+private const val ANILIST_API =
+    "https://graphql.anilist.co"
 
-object AniListAuth {
-    private const val CLIENT_ID = "YOUR_CLIENT_ID"
-    private const val REDIRECT_URI = "https://anilist.co/api/v2/oauth/pin"
+class AniListClient(
+    private val accessToken: String
+) {
 
-    fun buildAuthUrl(): String =
-        "https://anilist.co/api/v2/oauth/authorize" +
-                "?client_id=$CLIENT_ID" +
-                "&redirect_uri=$REDIRECT_URI" +
-                "&response_type=token"
-}
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
 
-@Serializable
-data class AniListManga(
-    val id: Int,
-    val title: AniListTitle,
-    val description: String?,
-    val status: String?,
-    val chapters: Int?,
-    val coverImage: AniListCover?,
-    val staff: AniListStaffConnection? = null,
-)
-
-@Serializable
-data class AniListTitle(val romaji: String?, val english: String?, val native: String?)
-
-@Serializable
-data class AniListCover(val large: String?, val medium: String?)
-
-@Serializable
-data class AniListStaffConnection(val edges: List<AniListStaffEdge>? = null)
-
-@Serializable
-data class AniListStaffEdge(val role: String?, val node: AniListStaffNode?)
-
-@Serializable
-data class AniListStaffNode(val name: AniListStaffName?)
-
-@Serializable
-data class AniListStaffName(val full: String?)
-
-class AniListClient(private val accessToken: String) {
-    private val json = Json { ignoreUnknownKeys = true }
     private val httpClient = HttpClient(CIO) {
         install(ContentNegotiation) {
             json(json)
         }
     }
 
-    suspend fun searchManga(query: String, perPage: Int = 10): List<AniListManga> {
-        val gql = """
-            query (${'$'}search: String, ${'$'}perPage: Int) {
-              Page(perPage: ${'$'}perPage) {
-                media(search: ${'$'}search, type: MANGA) {
+    private var userId: Int? = null
+    private var scoreFormat: String? = null
+
+    suspend fun getUsername(): String? {
+
+        val query = """
+            query {
+                Viewer {
+                    id
+                    name
+                    mediaListOptions {
+                        scoreFormat
+                    }
+                }
+            }
+        """.trimIndent()
+
+        return try {
+
+            val response: JsonObject =
+                httpClient.post(ANILIST_API) {
+                    bearerAuth(accessToken)
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(buildJsonObject {
+                        put("query", query)
+                    })
+                }.body()
+
+            val viewer =
+                response["data"]!!
+                    .jsonObject["Viewer"]!!
+                    .jsonObject
+
+            userId =
+                viewer["id"]!!
+                    .jsonPrimitive.int
+
+            scoreFormat =
+                viewer["mediaListOptions"]!!
+                    .jsonObject["scoreFormat"]!!
+                    .jsonPrimitive.content
+
+            viewer["name"]!!
+                .jsonPrimitive.content
+
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    suspend fun searchManga(
+        queryText: String
+    ): List<AniListManga> {
+
+        val query = """
+            query (${'$'}query: String) {
+              Page(perPage: 10) {
+                media(
+                  search: ${'$'}query,
+                  type: MANGA,
+                  format_not_in: [NOVEL]
+                ) {
                   id
-                  title { romaji english native }
-                  description(asHtml: false)
+                  title {
+                    romaji
+                    english
+                    native
+                  }
+                  description
                   status
                   chapters
-                  coverImage { large medium }
-                  staff { edges { role node { name { full } } } }
+                  coverImage {
+                    large
+                    medium
+                  }
                 }
               }
             }
         """.trimIndent()
-        val body = buildJsonObject {
-            put("query", gql)
-            put(
-                "variables",
-                buildJsonObject {
-                    put("search", query)
-                    put("perPage", perPage)
-                },
-            )
-        }
 
-        return runCatching {
-            val response: JsonObject = httpClient.post(ANILIST_API) {
-                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                bearerAuth(accessToken)
-                setBody(body)
-            }.body()
-            val mediaArray = response["data"]
-                ?.jsonObject?.get("Page")
-                ?.jsonObject?.get("media")
-                ?.jsonArray
-                ?: return emptyList()
-            json.decodeFromJsonElement<List<AniListManga>>(mediaArray)
-        }.getOrElse {
+        return try {
+
+            val response: JsonObject =
+                httpClient.post(ANILIST_API) {
+                    bearerAuth(accessToken)
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+
+                    setBody(
+                        buildJsonObject {
+                            put("query", query)
+
+                            put(
+                                "variables",
+                                buildJsonObject {
+                                    put("query", queryText)
+                                }
+                            )
+                        }
+                    )
+                }.body()
+
+            val media =
+                response["data"]
+                    ?.jsonObject
+                    ?.get("Page")
+                    ?.jsonObject
+                    ?.get("media")
+                    ?.jsonArray
+                    ?: return emptyList()
+
+            json.decodeFromJsonElement(media)
+
+        } catch (_: Exception) {
             emptyList()
         }
     }
 
-    suspend fun updateProgress(mediaId: Int, progress: Int, status: String = "CURRENT"): Boolean {
-        val gql = """
-            mutation (${'$'}mediaId: Int, ${'$'}progress: Int, ${'$'}status: MediaListStatus) {
-              SaveMediaListEntry(mediaId: ${'$'}mediaId, progress: ${'$'}progress, status: ${'$'}status) {
+    suspend fun getLibraryEntry(
+        mediaId: Int
+    ): AniListLibraryEntry? {
+
+        if (userId == null)
+            getUsername()
+
+        val query = """
+            query (
+              ${'$'}userId: Int!,
+              ${'$'}mediaId: Int!
+            ) {
+              MediaList(
+                userId: ${'$'}userId,
+                type: MANGA,
+                mediaId: ${'$'}mediaId
+              ) {
                 id
-                progress
                 status
+                score
+                progress
+
+                media {
+                  id
+
+                  title {
+                    romaji
+                  }
+
+                  description
+
+                  coverImage {
+                    large
+                  }
+                }
               }
             }
         """.trimIndent()
-        val body = buildJsonObject {
-            put("query", gql)
-            put(
-                "variables",
-                buildJsonObject {
-                    put("mediaId", mediaId)
-                    put("progress", progress)
-                    put("status", status)
-                },
-            )
-        }
 
-        return runCatching {
-            val response: JsonObject = httpClient.post(ANILIST_API) {
-                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                bearerAuth(accessToken)
-                setBody(body)
-            }.body()
+        return try {
+
+            val response: JsonObject =
+                httpClient.post(ANILIST_API) {
+
+                    bearerAuth(accessToken)
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+
+                    setBody(
+                        buildJsonObject {
+                            put("query", query)
+
+                            put(
+                                "variables",
+                                buildJsonObject {
+                                    put("userId", userId!!)
+                                    put("mediaId", mediaId)
+                                }
+                            )
+                        }
+                    )
+                }.body()
+
+            val entry =
+                response["data"]
+                    ?.jsonObject
+                    ?.get("MediaList")
+                    ?.jsonObject
+                    ?: return null
+
+            AniListLibraryEntry(
+                id = entry["id"]!!.jsonPrimitive.int,
+                mediaId = entry["media"]!!
+                    .jsonObject["id"]!!
+                    .jsonPrimitive.int,
+                title = entry["media"]!!
+                    .jsonObject["title"]!!
+                    .jsonObject["romaji"]!!
+                    .jsonPrimitive.content,
+                description = entry["media"]!!
+                    .jsonObject["description"]
+                    ?.jsonPrimitive
+                    ?.content,
+                coverUrl = entry["media"]!!
+                    .jsonObject["coverImage"]!!
+                    .jsonObject["large"]
+                    ?.jsonPrimitive
+                    ?.content,
+                progress = entry["progress"]!!
+                    .jsonPrimitive.int,
+                score = entry["score"]!!
+                    .jsonPrimitive.float,
+                status = entry["status"]!!
+                    .jsonPrimitive.content
+            )
+
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    suspend fun addLibraryEntry(
+        mediaId: Int,
+        progress: Int,
+        status: String = "CURRENT"
+    ): Boolean {
+
+        val mutation = """
+            mutation (
+                ${'$'}mediaId: Int,
+                ${'$'}progress: Int,
+                ${'$'}status: MediaListStatus
+            ) {
+                SaveMediaListEntry(
+                    mediaId: ${'$'}mediaId,
+                    progress: ${'$'}progress,
+                    status: ${'$'}status
+                ) {
+                    id
+                }
+            }
+        """.trimIndent()
+
+        return try {
+
+            val response: JsonObject =
+                httpClient.post(ANILIST_API) {
+
+                    bearerAuth(accessToken)
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+
+                    setBody(
+                        buildJsonObject {
+                            put("query", mutation)
+
+                            put(
+                                "variables",
+                                buildJsonObject {
+                                    put("mediaId", mediaId)
+                                    put("progress", progress)
+                                    put("status", status)
+                                }
+                            )
+                        }
+                    )
+                }.body()
+
             response["errors"] == null
-        }.getOrElse {
+
+        } catch (_: Exception) {
             false
         }
     }
 
-    fun close() = httpClient.close()
+    suspend fun updateLibraryEntry(
+        mediaId: Int,
+        progress: Int,
+        score: Float = 0f,
+        status: String = "CURRENT"
+    ): Boolean {
+
+        var existing =
+            getLibraryEntry(mediaId)
+
+        if (existing == null) {
+
+            addLibraryEntry(
+                mediaId = mediaId,
+                progress = progress,
+                status = status
+            )
+
+            existing =
+                getLibraryEntry(mediaId)
+                    ?: return false
+        }
+
+        val mutation = """
+            mutation (
+              ${'$'}listId: Int,
+              ${'$'}progress: Int,
+              ${'$'}status: MediaListStatus,
+              ${'$'}score: Float
+            ) {
+              SaveMediaListEntry(
+                id: ${'$'}listId,
+                progress: ${'$'}progress,
+                status: ${'$'}status,
+                score: ${'$'}score
+              ) {
+                id
+              }
+            }
+        """.trimIndent()
+
+        return try {
+
+            val response: JsonObject =
+                httpClient.post(ANILIST_API) {
+
+                    bearerAuth(accessToken)
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+
+                    setBody(
+                        buildJsonObject {
+
+                            put("query", mutation)
+
+                            put(
+                                "variables",
+                                buildJsonObject {
+                                    put("listId", existing.id)
+                                    put("progress", progress)
+                                    put("status", status)
+                                    put("score", score)
+                                }
+                            )
+                        }
+                    )
+                }.body()
+
+            response["errors"] == null
+
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun close() {
+        httpClient.close()
+    }
 }
