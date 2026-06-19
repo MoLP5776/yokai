@@ -5,7 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -204,7 +204,7 @@ fun ReaderScreen(state: AppState) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                NavButton(label = "◀", onClick = { state.previousChapter() }, modifier = Modifier.weight(1f))
+                NavButton(icon = Icons.AutoMirrored.Outlined.KeyboardArrowLeft, onClick = { state.previousChapter() }, modifier = Modifier.weight(1f))
                 Box(modifier = Modifier.weight(2f), contentAlignment = Alignment.Center) {
                     Text(
                         text = "Ch. ${chapter.chapterNumber}",
@@ -226,7 +226,7 @@ fun ReaderScreen(state: AppState) {
                         }
                     }
                 }
-                NavButton(label = "▶", onClick = { state.nextChapter() }, modifier = Modifier.weight(1f))
+                NavButton(icon = Icons.AutoMirrored.Outlined.KeyboardArrowRight, onClick = { state.nextChapter() }, modifier = Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(12.dp))
@@ -244,8 +244,8 @@ fun ReaderScreen(state: AppState) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                NavButton(label = "|◀", onClick = { pageIndex = 0 }, modifier = Modifier.weight(1f))
-                NavButton(label = "◀", onClick = { previousPage() }, modifier = Modifier.weight(1f))
+                NavButton(icon = Icons.Outlined.KeyboardDoubleArrowLeft, onClick = { pageIndex = 0 }, modifier = Modifier.weight(1f))
+                NavButton(icon = Icons.AutoMirrored.Outlined.KeyboardArrowLeft, onClick = { previousPage() }, modifier = Modifier.weight(1f))
                 Box(modifier = Modifier.weight(2f), contentAlignment = Alignment.Center) {
                     val displayPage = if (pageStyle == PageStyle.DOUBLE)
                         "${pageIndex + 1}-${(pageIndex + 2).coerceAtMost(pageNames.size)}"
@@ -270,9 +270,9 @@ fun ReaderScreen(state: AppState) {
                         }
                     }
                 }
-                NavButton(label = "▶", onClick = { nextPage() }, modifier = Modifier.weight(1f))
+                NavButton(icon = Icons.AutoMirrored.Outlined.KeyboardArrowRight, onClick = { nextPage() }, modifier = Modifier.weight(1f))
                 NavButton(
-                    label = "▶|",
+                    icon = Icons.Outlined.KeyboardDoubleArrowRight,
                     onClick = { pageIndex = pageNames.lastIndex.coerceAtLeast(0) },
                     modifier = Modifier.weight(1f)
                 )
@@ -424,14 +424,14 @@ fun ReaderScreen(state: AppState) {
                                 bitmap = left,
                                 contentDescription = "Page ${pageIndex + 1}",
                                 contentScale = contentScale,
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                modifier = Modifier.fillMaxHeight(),
                             )
                             if (right != null) {
                                 Image(
                                     bitmap = right,
                                     contentDescription = "Page ${pageIndex + 2}",
                                     contentScale = contentScale,
-                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    modifier = Modifier.fillMaxHeight(),
                                 )
                             }
                         }
@@ -447,7 +447,7 @@ fun ReaderScreen(state: AppState) {
                             bitmap = image,
                             contentDescription = pageNames.getOrNull(pageIndex),
                             contentScale = contentScale,
-                            modifier = Modifier.fillMaxSize(0.95f).padding(12.dp),
+                            modifier = Modifier.fillMaxSize().padding(8.dp),
                         )
                     }
                 }
@@ -498,7 +498,7 @@ private fun PageStyleButton(
 
 @Composable
 private fun NavButton(
-    label: String,
+    icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -512,11 +512,11 @@ private fun NavButton(
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp),
     ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-            textAlign = TextAlign.Center,
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+            modifier = Modifier.size(18.dp),
         )
     }
 }
