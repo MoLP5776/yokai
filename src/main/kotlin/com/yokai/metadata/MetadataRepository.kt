@@ -72,10 +72,12 @@ object MetadataRepository {
                     file.name == METADATA_FILENAME || file.extension.lowercase() in chapterExtensions
                 } == true
             }
-            ?.sortedBy { dir ->
+            ?.map { dir ->
                 val meta = runCatching { load(dir) }.getOrNull()
-                (meta?.effectiveTitle ?: dir.name).lowercase()
+                dir to (meta?.effectiveTitle ?: dir.name).lowercase()
             }
+            ?.sortedBy { (_, sortKey) -> sortKey }
+            ?.map { (dir, _) -> dir }
             ?.toList()
             ?: emptyList()
     }

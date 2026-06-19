@@ -114,7 +114,7 @@ fun ReaderScreen(state: AppState) {
             val currentSeriesDir = state.selectedSeries
             val currentChapter = state.readerChapter
             if (currentSeriesDir != null && currentChapter != null) {
-                state.markChapterRead(currentSeriesDir, currentChapter, true)
+                state.completeChapter(currentSeriesDir, currentChapter)
             }
             state.nextChapter()
         }
@@ -391,7 +391,7 @@ fun ReaderScreen(state: AppState) {
                                     .clickable {
                                         val dir = state.selectedSeries
                                         val ch = state.readerChapter
-                                        if (dir != null && ch != null) state.markChapterRead(dir, ch, true)
+                                        if (dir != null && ch != null) state.completeChapter(dir, ch)
                                         state.nextChapter()
                                     },
                                 contentAlignment = Alignment.Center,

@@ -107,6 +107,31 @@ class AppState(private val scope: CoroutineScope) {
         }
     }
 
+    // Called when the reader reaches the end of a chapter (100% read), as opposed to a manual
+    // checkbox toggle elsewhere in the library UI. Pushes progress to AniList if linked, but
+    // skips point/bonus chapters (non-integer chapterFloat, e.g. 201.5) since AniList tracks
+    // whole chapter counts.
+    fun completeChapter(seriesDir: File, chapter: ChapterInfo) {
+        markChapterRead(seriesDir, chapter, true)
+
+        val metadata = selectedSeriesMetadata?.takeIf { seriesDir == selectedSeries } ?: return
+        val mediaId = metadata.aniListId ?: return
+        val client = aniListClient ?: return
+        if (chapter.chapterFloat % 1f != 0f) return
+        val newProgress = chapter.chapterFloat.toInt()
+
+        scope.launch {
+            val existing = client.getLibraryEntry(mediaId)
+            if (existing != null && existing.progress >= newProgress) return@launch
+            client.updateLibraryEntry(
+                mediaId = mediaId,
+                progress = newProgress,
+                score = existing?.score ?: 0f,
+                status = existing?.status ?: "PLANNING",
+            )
+        }
+    }
+
     fun markAllChaptersRead(seriesDir: File, read: Boolean) {
         val chapters = ChapterParser.scanSeries(seriesDir)
         chapters.forEach { chapter ->
@@ -128,6 +153,16 @@ class AppState(private val scope: CoroutineScope) {
         }
         selectedSeriesMetadata = metadata
         refreshLibrary()
+    }
+
+    fun linkAniListSeries(mediaId: Int) {
+        val metadata = selectedSeriesMetadata ?: return
+        saveMetadata(metadata.copy(aniListId = mediaId))
+    }
+
+    fun unlinkAniListSeries() {
+        val metadata = selectedSeriesMetadata ?: return
+        saveMetadata(metadata.copy(aniListId = null))
     }
 
     fun openReader(chapter: ChapterInfo) {

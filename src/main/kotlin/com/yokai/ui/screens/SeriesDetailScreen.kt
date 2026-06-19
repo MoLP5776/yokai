@@ -2,6 +2,7 @@ package com.yokai.ui.screens
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.*
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.*
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +34,7 @@ fun SeriesDetailScreen(state: AppState) {
     val seriesDir = state.selectedSeries ?: return
     var sortDescending by remember { mutableStateOf(state.prefs.defaultSortDescending) }
     var showMetadataEditor by remember { mutableStateOf(false) }
+    var showTracker by remember { mutableStateOf(false) }
     val sortedChapters =
         if (sortDescending) chapters.sortedByDescending { it.chapterFloat } else chapters.sortedBy { it.chapterFloat }
 
@@ -60,7 +63,12 @@ fun SeriesDetailScreen(state: AppState) {
         )
     }
 
-    Row(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
+    Row(
+        Modifier
+            .fillMaxSize()
+            .let { if (showTracker) it.blur(16.dp) else it },
+    ) {
         Sidebar(state)
 
         Column(Modifier.fillMaxSize()) {
@@ -229,6 +237,15 @@ fun SeriesDetailScreen(state: AppState) {
                                 Spacer(Modifier.width(4.dp))
                                 Text(if (sortDescending) "Newest first" else "Oldest first", fontSize = 13.sp)
                             }
+                            TextButton(onClick = { showTracker = true }) {
+                                Icon(
+                                    Icons.Outlined.Link,
+                                    contentDescription = "Tracker",
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Tracker", fontSize = 13.sp)
+                            }
                             IconButton(onClick = { state.markAllChaptersRead(seriesDir, true) }) {
                                 Icon(Icons.Outlined.DoneAll, "Mark all read", modifier = Modifier.size(20.dp))
                             }
@@ -355,14 +372,35 @@ fun SeriesDetailScreen(state: AppState) {
         }
     }
 
+    if (showTracker) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.35f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            AniListTrackerDialog(
+                state = state,
+                metadata = metadata,
+                onDismiss = { showTracker = false },
+            )
+        }
+    }
+    }
+
     contextMenuChapter?.let { chapter ->
         ChapterContextMenu(
             isVisible = showChapterContextMenu,
             offset = contextMenuOffset,
             onDismiss = { showChapterContextMenu = false },
             onViewChapter = { state.openReader(chapter) },
-            onToggleRead = { state.markChapterRead(seriesDir, chapter, !readState[chapter.filename]!!) },
-            isChapterRead = readState[chapter.filename]!!,
+            onToggleRead = { state.markChapterRead(seriesDir, chapter, !readState.getOrDefault(chapter.filename, false)) },
+            isChapterRead = readState.getOrDefault(chapter.filename, false),
             onSelectPrevious = { state.selectPrevious(chapter) },
         )
     }

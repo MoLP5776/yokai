@@ -49,6 +49,7 @@ class AniListClient(
                 httpClient.post(ANILIST_API) {
                     bearerAuth(accessToken)
                     contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
                     setBody(buildJsonObject {
                         put("query", query)
                     })
@@ -112,6 +113,7 @@ class AniListClient(
                 httpClient.post(ANILIST_API) {
                     bearerAuth(accessToken)
                     contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
 
                     setBody(
                         buildJsonObject {
@@ -189,6 +191,7 @@ class AniListClient(
 
                     bearerAuth(accessToken)
                     contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
 
                     setBody(
                         buildJsonObject {
@@ -272,6 +275,7 @@ class AniListClient(
 
                     bearerAuth(accessToken)
                     contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
 
                     setBody(
                         buildJsonObject {
@@ -344,6 +348,7 @@ class AniListClient(
 
                     bearerAuth(accessToken)
                     contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
 
                     setBody(
                         buildJsonObject {
