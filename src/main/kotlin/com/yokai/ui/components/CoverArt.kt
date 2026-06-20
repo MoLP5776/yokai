@@ -27,10 +27,37 @@ import com.yokai.metadata.MetadataRepository
 import com.yokai.metadata.SeriesMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Rect
+import org.jetbrains.skia.Surface
 import org.jetbrains.skia.Image as SkiaImage
 import java.io.File
 
 private const val COVER_CACHE_MAX_SIZE = 400
+
+
+private const val COVER_MAX_DIMENSION = 800
+
+private fun decodeAndDownscale(bytes: ByteArray): ImageBitmap {
+    val original = SkiaImage.makeFromEncoded(bytes)
+    val maxDim = maxOf(original.width, original.height)
+    if (maxDim <= COVER_MAX_DIMENSION) {
+        return original.use { it.toComposeImageBitmap() }
+    }
+
+    return original.use {
+        val scale = COVER_MAX_DIMENSION.toFloat() / maxDim
+        val targetWidth = (it.width * scale).toInt().coerceAtLeast(1)
+        val targetHeight = (it.height * scale).toInt().coerceAtLeast(1)
+        Surface.makeRasterN32Premul(targetWidth, targetHeight).use { surface ->
+            surface.canvas.drawImageRect(
+                it,
+                Rect.makeWH(it.width.toFloat(), it.height.toFloat()),
+                Rect.makeWH(targetWidth.toFloat(), targetHeight.toFloat()),
+            )
+            surface.makeImageSnapshot().use { scaled -> scaled.toComposeImageBitmap() }
+        }
+    }
+}
 
 private val coverImageCache = object : LinkedHashMap<String, ImageBitmap>(COVER_CACHE_MAX_SIZE, 0.75f, true) {
     override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean {
@@ -61,7 +88,7 @@ fun CoverArt(
         bitmap = coverFile?.let { file ->
             withContext(Dispatchers.IO) {
                 runCatching {
-                    SkiaImage.makeFromEncoded(file.readBytes()).toComposeImageBitmap()
+                    decodeAndDownscale(file.readBytes())
                 }.getOrNull()?.also { decoded ->
                     synchronized(coverImageCache) { coverImageCache[coverCacheKey(file)] = decoded }
                 }
