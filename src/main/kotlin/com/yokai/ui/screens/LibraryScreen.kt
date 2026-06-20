@@ -208,7 +208,7 @@ private fun LayoutMenuButton(state: AppState) {
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             )
-            listOf(4, 6).forEach { columns ->
+            listOf(4, 6, 8).forEach { columns ->
                 DropdownMenuItem(
                     text = { Text("$columns columns") },
                     leadingIcon = { RadioButton(selected = state.prefs.libraryGridColumns == columns, onClick = null) },
