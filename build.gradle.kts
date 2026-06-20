@@ -12,13 +12,12 @@ group = "com.yokai"
 version = "1.0.0"
 
 val appPackageName = "Yokai"
-val appMainClass = "com.yokai.MainKt"
+val appMainClass  = "com.yokai.MainKt"
 
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
-    implementation(compose.components.resources)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
@@ -32,25 +31,51 @@ kotlin {
     jvmToolchain(21)
 }
 
+// Determine which formats to declare based on the OS running the build.
+// AppImage is Linux-only — declaring it on macOS causes a configuration error,
+// so we must gate it here rather than listing all three unconditionally.
+val currentOs = org.gradle.internal.os.OperatingSystem.current()
+val targetFormats = when {
+    currentOs.isLinux   -> arrayOf(TargetFormat.AppImage)
+    currentOs.isWindows -> arrayOf(TargetFormat.Msi)
+    currentOs.isMacOsX  -> arrayOf(TargetFormat.Dmg)
+    else                -> emptyArray()
+}
+
 compose.desktop {
     application {
         mainClass = appMainClass
 
         nativeDistributions {
-            targetFormats(TargetFormat.AppImage)
-            packageName = appPackageName
+            targetFormats(*targetFormats.toTypedArray())
+
+            packageName    = appPackageName
             packageVersion = "1.0.0"
-            description = "A local manga reader with AniList tracking"
-            vendor = "Yokai"
+            description    = "A local manga reader with AniList tracking"
+            vendor         = "Yokai"
 
             linux {
                 appCategory = "Graphics"
-                iconFile.set(project.file("src/main/composeResources/drawable/icon.png"))
+                iconFile.set(project.file("src/main/resources/icon.png"))
+            }
+
+            windows {
+                iconFile.set(project.file("src/main/resources/icon.ico"))
+                menuGroup     = appPackageName
+                upgradeUuid   = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                dirChooser    = true
+                perUserInstall = true
+            }
+
+            macOS {
+                iconFile.set(project.file("src/main/resources/icon.icns"))
+                bundleID = "com.yokai.app"
             }
         }
     }
 }
 
+// ── AppImage packaging (Linux only) ──────────────────────────────────────────
 
 val appImageDir = layout.buildDirectory.dir("compose/tmp/AppDir")
 
@@ -61,14 +86,11 @@ val prepareAppImageDir by tasks.registering(Sync::class) {
     from(layout.buildDirectory.dir("compose/binaries/main/app/$appPackageName"))
     into(appImageDir)
 
-    doFirst {
-        delete(appImageDir)
-    }
+    doFirst { delete(appImageDir) }
 
     doLast {
-        val appDir = appImageDir.get().asFile
-        val icon = file("src/main/composeResources/drawable/icon.png")
-
+        val appDir  = appImageDir.get().asFile
+        val icon    = file("src/main/resources/icon.png")
         val wmClass = appMainClass.replace(".", "-")
 
         icon.copyTo(appDir.resolve("$appPackageName.png"), overwrite = true)
@@ -107,15 +129,13 @@ tasks.register<Exec>("packageAppImageToDir") {
     description = "Builds the .AppImage with appimagetool and places it in build/appimage"
     dependsOn(prepareAppImageDir)
 
-    val outputDir = layout.buildDirectory.dir("appimage")
+    val outputDir  = layout.buildDirectory.dir("appimage")
     val outputFile = outputDir.map { it.file("$appPackageName-${project.version}-x86_64.AppImage") }
 
     inputs.dir(appImageDir)
     outputs.file(outputFile)
 
-    doFirst {
-        outputDir.get().asFile.mkdirs()
-    }
+    doFirst { outputDir.get().asFile.mkdirs() }
 
     environment("ARCH", "x86_64")
     commandLine(
