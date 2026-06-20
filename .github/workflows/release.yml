@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'          # triggers on v1.0.0, v1.2.3, etc.
+  workflow_dispatch:  # allows manual trigger from the GitHub Actions UI
+
+permissions:
+  contents: write   # needed to create the GitHub Release and upload assets
+
+jobs:
+
+  # ── Linux → AppImage ────────────────────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install appimagetool
+        run: |
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage \
+            -O /usr/local/bin/appimagetool
+          chmod +x /usr/local/bin/appimagetool
+          # AppImages need FUSE; on the Actions runner we use the extracted fallback
+          sudo apt-get install -y libfuse2 fakeroot binutils
+
+      - name: Write local.properties
+        run: |
+          echo "anilist.clientId=${{ secrets.ANILIST_CLIENT_ID }}" >> local.properties
+          echo "anilist.clientSecret=${{ secrets.ANILIST_CLIENT_SECRET }}" >> local.properties
+
+      - name: Build AppImage
+        run: ./gradlew packageAppImageToDir --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: build/appimage/*.AppImage
+
+  # ── Windows → .exe installer ─────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Write local.properties
+        shell: pwsh
+        run: |
+          Add-Content local.properties "anilist.clientId=${{ secrets.ANILIST_CLIENT_ID }}"
+          Add-Content local.properties "anilist.clientSecret=${{ secrets.ANILIST_CLIENT_SECRET }}"
+
+      - name: Build Windows installer
+        run: ./gradlew packageExe --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: build/compose/binaries/main/exe/*.exe
+
+  # ── macOS → .dmg ─────────────────────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Write local.properties
+        run: |
+          echo "anilist.clientId=${{ secrets.ANILIST_CLIENT_ID }}" >> local.properties
+          echo "anilist.clientSecret=${{ secrets.ANILIST_CLIENT_SECRET }}" >> local.properties
+
+      - name: Build macOS dmg
+        run: ./gradlew packageDmg --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: build/compose/binaries/main/dmg/*.dmg
+
+  # ── GitHub Release — runs after all three builds succeed ────────────────────
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts   # downloads all three artifacts into artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/linux-appimage/*.AppImage
+            artifacts/windows-exe/*.exe
+            artifacts/macos-dmg/*.dmg
+          generate_release_notes: true   # auto-generates changelog from commits
