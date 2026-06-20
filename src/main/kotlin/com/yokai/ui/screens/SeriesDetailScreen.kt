@@ -86,7 +86,7 @@ fun SeriesDetailScreen(state: AppState) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
                 }
                 Text(
-                    metadata.title,
+                    metadata.effectiveTitle,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -121,7 +121,7 @@ fun SeriesDetailScreen(state: AppState) {
 
                         Column(Modifier.weight(1f)) {
                             Text(
-                                metadata.title,
+                                metadata.effectiveTitle,
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground,
