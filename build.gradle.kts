@@ -12,11 +12,13 @@ group = "com.yokai"
 version = "1.0.0"
 
 val appPackageName = "Yokai"
+val appMainClass = "com.yokai.MainKt"
 
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
+    implementation(compose.components.resources)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
@@ -32,7 +34,7 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "com.yokai.MainKt"
+        mainClass = appMainClass
 
         nativeDistributions {
             targetFormats(TargetFormat.AppImage)
@@ -43,7 +45,7 @@ compose.desktop {
 
             linux {
                 appCategory = "Graphics"
-                iconFile.set(project.file("src/main/resources/icon.png"))
+                iconFile.set(project.file("src/main/composeResources/drawable/icon.png"))
             }
         }
     }
@@ -59,10 +61,21 @@ val prepareAppImageDir by tasks.registering(Sync::class) {
     from(layout.buildDirectory.dir("compose/binaries/main/app/$appPackageName"))
     into(appImageDir)
 
+    doFirst {
+        delete(appImageDir)
+    }
+
     doLast {
         val appDir = appImageDir.get().asFile
+        val icon = file("src/main/composeResources/drawable/icon.png")
 
-        file("src/main/resources/icon.png").copyTo(appDir.resolve("$appPackageName.png"), overwrite = true)
+        val wmClass = appMainClass.replace(".", "-")
+
+        icon.copyTo(appDir.resolve("$appPackageName.png"), overwrite = true)
+
+        val hicolorIcon = appDir.resolve("usr/share/icons/hicolor/256x256/apps/$appPackageName.png")
+        hicolorIcon.parentFile.mkdirs()
+        icon.copyTo(hicolorIcon, overwrite = true)
 
         appDir.resolve("$appPackageName.desktop").writeText(
             """
@@ -74,6 +87,7 @@ val prepareAppImageDir by tasks.registering(Sync::class) {
             Icon=$appPackageName
             Categories=Graphics;
             Terminal=false
+            StartupWMClass=$wmClass
             """.trimIndent() + "\n"
         )
 
