@@ -4,28 +4,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import com.yokai.ui.screens.*
-
-private val YokaiColorScheme = darkColorScheme(
-    primary = Color(0xFFE85D4F),
-    secondary = Color(0xFF70C1B3),
-    tertiary = Color(0xFFF5C542),
-    background = Color(0xFF181716),
-    surface = Color(0xFF242220),
-    surfaceVariant = Color(0xFF36322F),
-    onPrimary = Color(0xFFFFFFFF),
-    onBackground = Color(0xFFF1EFEB),
-    onSurface = Color(0xFFF1EFEB),
-    onSurfaceVariant = Color(0xFFD5D0C8),
-)
+import com.yokai.ui.theme.colorScheme
 
 @Composable
 fun App() {
     val scope = rememberCoroutineScope()
     val state = remember { AppState(scope) }
+    val colorScheme = state.prefs.appTheme.colorScheme(state.prefs.themeMode, state.prefs.pureBlackDarkMode)
 
-    MaterialTheme(colorScheme = YokaiColorScheme) {
+    MaterialTheme(colorScheme = colorScheme) {
         Surface(
             modifier = Modifier
                 .fillMaxSize(),

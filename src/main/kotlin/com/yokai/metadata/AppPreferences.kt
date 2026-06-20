@@ -5,6 +5,24 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 
 @Serializable
+enum class AppTheme(val displayName: String) {
+    DEFAULT("Default"),
+    CATPPUCCIN("Catppuccin"),
+    NORD("Nord"),
+    DRACULA("Dracula"),
+    GRUVBOX("Gruvbox"),
+    FOREST("Forest"),
+    STRAWBERRY("Strawberry"),
+    MONOCHROME("Monochrome"),
+}
+
+@Serializable
+enum class ThemeMode {
+    LIGHT,
+    DARK,
+}
+
+@Serializable
 data class AppPreferences(
     val libraryRootPath: String = "",
     val aniListAccessToken: String = "",
@@ -12,6 +30,9 @@ data class AppPreferences(
     val defaultCategory: String? = null,
     val librarySortAscending: Boolean = true,
     val libraryGridColumns: Int = 6,
+    val appTheme: AppTheme = AppTheme.DEFAULT,
+    val themeMode: ThemeMode = ThemeMode.DARK,
+    val pureBlackDarkMode: Boolean = false,
 )
 
 object PreferencesRepository {

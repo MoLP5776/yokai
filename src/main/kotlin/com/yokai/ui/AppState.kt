@@ -333,6 +333,21 @@ class AppState(private val scope: CoroutineScope) {
         PreferencesRepository.save(prefs)
     }
 
+    fun updateAppTheme(theme: AppTheme) {
+        prefs = prefs.copy(appTheme = theme)
+        PreferencesRepository.save(prefs)
+    }
+
+    fun updateThemeMode(mode: ThemeMode) {
+        prefs = prefs.copy(themeMode = mode)
+        PreferencesRepository.save(prefs)
+    }
+
+    fun updatePureBlackDarkMode(enabled: Boolean) {
+        prefs = prefs.copy(pureBlackDarkMode = enabled)
+        PreferencesRepository.save(prefs)
+    }
+
     val allCategories: List<String>
         get() = seriesList
             .mapNotNull { seriesMetadataMap[it] }
