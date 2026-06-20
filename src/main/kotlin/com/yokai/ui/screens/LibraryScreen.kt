@@ -1,6 +1,9 @@
 package com.yokai.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.*
@@ -11,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.*
 import androidx.compose.ui.text.font.FontWeight
@@ -91,6 +95,8 @@ fun LibraryScreen(state: AppState) {
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                 )
+                Spacer(Modifier.width(8.dp))
+                LayoutMenuButton(state)
             }
 
             HorizontalDivider(Modifier, thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
@@ -112,7 +118,7 @@ fun LibraryScreen(state: AppState) {
                     )
                 }
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(6),
+                    columns = GridCells.Fixed(state.prefs.libraryGridColumns),
                     contentPadding = PaddingValues(20.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -171,6 +177,49 @@ fun LibraryScreen(state: AppState) {
 }
 
 @Composable
+private fun LayoutMenuButton(state: AppState) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Outlined.GridView, contentDescription = "Layout options")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Text(
+                text = "Sort",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+            DropdownMenuItem(
+                text = { Text("Alphabetical (A-Z)") },
+                leadingIcon = { RadioButton(selected = state.prefs.librarySortAscending, onClick = null) },
+                onClick = { state.setLibrarySortAscending(true) },
+            )
+            DropdownMenuItem(
+                text = { Text("Alphabetical (Z-A)") },
+                leadingIcon = { RadioButton(selected = !state.prefs.librarySortAscending, onClick = null) },
+                onClick = { state.setLibrarySortAscending(false) },
+            )
+            HorizontalDivider()
+            Text(
+                text = "Columns",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+            listOf(4, 6).forEach { columns ->
+                DropdownMenuItem(
+                    text = { Text("$columns columns") },
+                    leadingIcon = { RadioButton(selected = state.prefs.libraryGridColumns == columns, onClick = null) },
+                    onClick = { state.setLibraryGridColumns(columns) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SeriesCard(
     seriesDir: File,
     state: AppState,
@@ -185,10 +234,15 @@ private fun SeriesCard(
     val unread = chapters - readCount
 
     var cardLayoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val coverScale by animateFloatAsState(if (isHovered) 1.08f else 1f)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .hoverable(interactionSource)
+            .pointerHoverIcon(PointerIcon.Hand)
             .onGloballyPositioned { coordinates ->
                 cardLayoutCoordinates = coordinates
             }
@@ -226,7 +280,12 @@ private fun SeriesCard(
                 CoverArt(
                     seriesDir = seriesDir,
                     metadata = metadata,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = coverScale
+                            scaleY = coverScale
+                        },
                     placeholderFontSize = 48.sp,
                 )
 

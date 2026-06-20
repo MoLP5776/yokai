@@ -10,6 +10,8 @@ data class AppPreferences(
     val aniListAccessToken: String = "",
     val defaultSortDescending: Boolean = true,
     val defaultCategory: String? = null,
+    val librarySortAscending: Boolean = true,
+    val libraryGridColumns: Int = 6,
 )
 
 object PreferencesRepository {

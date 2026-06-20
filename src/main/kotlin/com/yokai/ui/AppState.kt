@@ -323,6 +323,16 @@ class AppState(private val scope: CoroutineScope) {
         selectedCategory = category
     }
 
+    fun setLibrarySortAscending(ascending: Boolean) {
+        prefs = prefs.copy(librarySortAscending = ascending)
+        PreferencesRepository.save(prefs)
+    }
+
+    fun setLibraryGridColumns(columns: Int) {
+        prefs = prefs.copy(libraryGridColumns = columns)
+        PreferencesRepository.save(prefs)
+    }
+
     val allCategories: List<String>
         get() = seriesList
             .mapNotNull { seriesMetadataMap[it] }
@@ -331,9 +341,13 @@ class AppState(private val scope: CoroutineScope) {
             .sorted()
 
     val filteredSeriesList: List<File>
-        get() = selectedCategory?.let { category ->
-            seriesList.filter { dir -> seriesMetadataMap[dir]?.categories?.contains(category) ?: false }
-        } ?: seriesList
+        get() {
+            val base = selectedCategory?.let { category ->
+                seriesList.filter { dir -> seriesMetadataMap[dir]?.categories?.contains(category) ?: false }
+            } ?: seriesList
+            val byTitle = compareBy<File> { dir -> (seriesMetadataMap[dir]?.effectiveTitle ?: dir.name).lowercase() }
+            return base.sortedWith(if (prefs.librarySortAscending) byTitle else byTitle.reversed())
+        }
 
     fun readChapterCount(seriesDir: File): Int {
         return seriesMetadataMap[seriesDir]?.chapterReadState?.values?.count { it } ?: 0

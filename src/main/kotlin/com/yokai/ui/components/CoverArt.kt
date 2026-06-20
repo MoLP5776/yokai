@@ -30,6 +30,16 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image as SkiaImage
 import java.io.File
 
+private const val COVER_CACHE_MAX_SIZE = 400
+
+private val coverImageCache = object : LinkedHashMap<String, ImageBitmap>(COVER_CACHE_MAX_SIZE, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean {
+        return size > COVER_CACHE_MAX_SIZE
+    }
+}
+
+private fun coverCacheKey(file: File) = "${file.absolutePath}:${file.lastModified()}"
+
 @Composable
 fun CoverArt(
     seriesDir: File?,
@@ -42,15 +52,19 @@ fun CoverArt(
         coverOverride ?: seriesDir?.let { MetadataRepository.resolveCoverFile(it, metadata) }
     }
     var bitmap by remember(coverFile?.absolutePath, coverFile?.lastModified()) {
-        mutableStateOf<ImageBitmap?>(null)
+        val cached = coverFile?.let { synchronized(coverImageCache) { coverImageCache[coverCacheKey(it)] } }
+        mutableStateOf(cached)
     }
 
     LaunchedEffect(coverFile?.absolutePath, coverFile?.lastModified()) {
+        if (bitmap != null) return@LaunchedEffect
         bitmap = coverFile?.let { file ->
             withContext(Dispatchers.IO) {
                 runCatching {
                     SkiaImage.makeFromEncoded(file.readBytes()).toComposeImageBitmap()
-                }.getOrNull()
+                }.getOrNull()?.also { decoded ->
+                    synchronized(coverImageCache) { coverImageCache[coverCacheKey(file)] = decoded }
+                }
             }
         }
     }
