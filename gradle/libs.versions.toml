@@ -4,7 +4,7 @@ compose = "1.7.3"
 ktor = "3.0.3"
 serialization = "1.7.3"
 coroutines = "1.9.0"
-conveyor = "1.12"
+conveyor = "2.0"
 
 [libraries]
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
