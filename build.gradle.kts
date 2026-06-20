@@ -18,6 +18,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
+    implementation(compose.components.resources)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
@@ -31,11 +32,18 @@ kotlin {
     jvmToolchain(21)
 }
 
+// "auto" detection relies on Kotlin Multiplatform source sets, which this
+// JVM-only project doesn't have, so the Res class never gets generated unless
+// this is forced.
+compose.resources {
+    generateResClass = always
+}
+
 // Determine which formats to declare based on the OS running the build.
 // AppImage is Linux-only — declaring it on macOS causes a configuration error,
 // so we must gate it here rather than listing all three unconditionally.
 val currentOs = org.gradle.internal.os.OperatingSystem.current()
-val targetFormats = when {
+val desiredTargetFormats = when {
     currentOs.isLinux   -> arrayOf(TargetFormat.AppImage)
     currentOs.isWindows -> arrayOf(TargetFormat.Msi)
     currentOs.isMacOsX  -> arrayOf(TargetFormat.Dmg)
@@ -47,7 +55,7 @@ compose.desktop {
         mainClass = appMainClass
 
         nativeDistributions {
-            targetFormats(*targetFormats.toTypedArray())
+            targetFormats(*desiredTargetFormats)
 
             packageName    = appPackageName
             packageVersion = "1.0.0"
@@ -56,11 +64,11 @@ compose.desktop {
 
             linux {
                 appCategory = "Graphics"
-                iconFile.set(project.file("src/main/resources/icon.png"))
+                iconFile.set(project.file("src/main/composeResources/drawable/icon.png"))
             }
 
             windows {
-                iconFile.set(project.file("src/main/resources/icon.ico"))
+                iconFile.set(project.file("src/main/composeResources/drawable/yokai-logo.ico"))
                 menuGroup     = appPackageName
                 upgradeUuid   = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 dirChooser    = true
@@ -68,7 +76,7 @@ compose.desktop {
             }
 
             macOS {
-                iconFile.set(project.file("src/main/resources/icon.icns"))
+                iconFile.set(project.file("src/main/composeResources/drawable/yokai-logo.icns"))
                 bundleID = "com.yokai.app"
             }
         }
@@ -90,7 +98,7 @@ val prepareAppImageDir by tasks.registering(Sync::class) {
 
     doLast {
         val appDir  = appImageDir.get().asFile
-        val icon    = file("src/main/resources/icon.png")
+        val icon    = file("src/main/composeResources/drawable/icon.png")
         val wmClass = appMainClass.replace(".", "-")
 
         icon.copyTo(appDir.resolve("$appPackageName.png"), overwrite = true)
