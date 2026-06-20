@@ -107,6 +107,10 @@ fun ReaderScreen(state: AppState) {
     }
 
     fun nextPage() {
+        if (state.noNextChapterAvailable) {
+            state.closeReader()
+            return
+        }
         val step = if (pageStyle == PageStyle.DOUBLE) 2 else 1
         if (pageIndex + step <= pageNames.lastIndex) {
             pageIndex += step
@@ -442,6 +446,23 @@ fun ReaderScreen(state: AppState) {
                     val image = pageImage
                     if (image == null) {
                         Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    } else if (containToWidth && !containToHeight) {
+                        // Page may be taller than the viewport; allow scrolling within just this
+                        // page instead of clipping it, without crossing into other pages.
+                        val pageScrollState = remember(chapter.filePath, pageIndex) { ScrollState(0) }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(pageScrollState),
+                            contentAlignment = Alignment.TopCenter,
+                        ) {
+                            Image(
+                                bitmap = image,
+                                contentDescription = pageNames.getOrNull(pageIndex),
+                                contentScale = contentScale,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     } else {
                         Image(
                             bitmap = image,
