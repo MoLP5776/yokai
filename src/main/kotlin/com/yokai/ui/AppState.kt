@@ -91,8 +91,10 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     fun selectSeries(dir: File) {
+        MetadataRepository.pruneChapterReadState(dir)
         selectedSeries = dir
-        selectedSeriesMetadata = seriesMetadataMap[dir] ?: MetadataRepository.load(dir)
+        selectedSeriesMetadata = MetadataRepository.load(dir)
+        seriesMetadataMap = seriesMetadataMap.toMutableMap().apply { this[dir] = selectedSeriesMetadata!! }
         selectedSeriesChapters = ChapterParser.scanSeries(dir)
         currentScreen = Screen.SeriesDetail
     }
@@ -272,6 +274,7 @@ class AppState(private val scope: CoroutineScope) {
     }
 
     fun removeSeries(dir: File): Boolean {
+        MetadataRepository.removeSeriesConfig(dir)
         val removed = dir.deleteRecursively()
         if (removed) {
             seriesMetadataMap = seriesMetadataMap.toMutableMap().apply {
@@ -365,7 +368,27 @@ class AppState(private val scope: CoroutineScope) {
         }
 
     fun readChapterCount(seriesDir: File): Int {
-        return seriesMetadataMap[seriesDir]?.chapterReadState?.values?.count { it } ?: 0
+        val readState = seriesMetadataMap[seriesDir]?.chapterReadState ?: return 0
+        val total = seriesChapterCounts[seriesDir] ?: return 0
+        return readState.values.count { it }.coerceAtMost(total)
+    }
+
+    var migrationStatus by mutableStateOf<String?>(null)
+        private set
+
+    fun migrateLibraryStorage() {
+        val root = prefs.libraryRootPath
+        if (root.isBlank()) {
+            migrationStatus = "No library folder configured."
+            return
+        }
+        scope.launch(Dispatchers.IO) {
+            val count = MetadataRepository.migrateAll(File(root))
+            withContext(Dispatchers.Main) {
+                migrationStatus = if (count > 0) "Migrated $count series to centralized storage." else "Nothing to migrate — all series already use centralized storage."
+                refreshLibrary()
+            }
+        }
     }
 
     fun toggleMultiSelectMode() {
@@ -410,11 +433,15 @@ class AppState(private val scope: CoroutineScope) {
                         }
 
                         is LibraryEvent.ChapterRemoved -> {
+                            withContext(Dispatchers.IO) {
+                                MetadataRepository.pruneChapterReadState(event.seriesDir)
+                            }
+                            val updatedChapters = ChapterParser.scanSeries(event.seriesDir)
                             seriesChapterCounts = seriesChapterCounts.toMutableMap().apply {
-                                this[event.seriesDir] = ChapterParser.scanSeries(event.seriesDir).size
+                                this[event.seriesDir] = updatedChapters.size
                             }
                             if (event.seriesDir == selectedSeries) {
-                                selectedSeriesChapters = ChapterParser.scanSeries(event.seriesDir)
+                                selectedSeriesChapters = updatedChapters
                             }
                             seriesMetadataMap = seriesMetadataMap.toMutableMap().apply {
                                 this[event.seriesDir] = MetadataRepository.load(event.seriesDir)

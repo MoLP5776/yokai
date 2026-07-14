@@ -171,7 +171,7 @@ fun SeriesDetailScreen(state: AppState) {
                             }
 
                             Spacer(Modifier.height(12.dp))
-                            val readCount = readState.values.count { it }
+                            val readCount = chapters.count { readState[it.filename] == true }
                             val total = chapters.size
                             if (total > 0) {
                                 Text(

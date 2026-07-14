@@ -205,6 +205,24 @@ fun SettingsScreen(state: AppState) {
                     }
                 }
                 Column {
+                    Text("Storage", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Series metadata and covers are stored in ~/.config/yokai/library/. Use the button below to migrate any legacy .yokai folders and yokai.json files from your series directories into this centralized location.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Button(onClick = { state.migrateLibraryStorage() }) {
+                        Text("Migrate to centralized storage")
+                    }
+                    state.migrationStatus?.let { status ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(status, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+                    }
+                }
+
+                Column {
                     Text("Appearance", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(10.dp))
 
