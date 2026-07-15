@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -127,7 +128,7 @@ fun ReaderScreen(state: AppState) {
     val contentScale = when {
         containToWidth && containToHeight -> ContentScale.Fit
         containToWidth -> ContentScale.FillWidth
-        containToHeight -> ContentScale.FillHeight
+        containToHeight -> ContentScale.Fit
         stretchSmallPages -> ContentScale.FillBounds
         else -> ContentScale.Fit
     }
@@ -345,6 +346,7 @@ fun ReaderScreen(state: AppState) {
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
+                .clipToBounds()
                 .pointerInput(pageNames, pageIndex, pageStyle) {
                     if (pageStyle != PageStyle.VERTICAL) {
                         detectTapGestures { offset ->
@@ -428,15 +430,17 @@ fun ReaderScreen(state: AppState) {
                                 bitmap = left,
                                 contentDescription = "Page ${pageIndex + 1}",
                                 contentScale = contentScale,
-                                modifier = Modifier.fillMaxHeight(),
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                             if (right != null) {
                                 Image(
                                     bitmap = right,
                                     contentDescription = "Page ${pageIndex + 2}",
                                     contentScale = contentScale,
-                                    modifier = Modifier.fillMaxHeight(),
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
                                 )
+                            } else {
+                                Spacer(Modifier.weight(1f))
                             }
                         }
                     }
