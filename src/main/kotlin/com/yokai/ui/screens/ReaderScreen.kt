@@ -128,7 +128,7 @@ fun ReaderScreen(state: AppState) {
     val contentScale = when {
         containToWidth && containToHeight -> ContentScale.Fit
         containToWidth -> ContentScale.FillWidth
-        containToHeight -> ContentScale.FillHeight
+        containToHeight -> ContentScale.Fit
         stretchSmallPages -> ContentScale.FillBounds
         else -> ContentScale.Fit
     }
