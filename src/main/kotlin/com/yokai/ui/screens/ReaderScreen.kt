@@ -27,6 +27,13 @@ import kotlinx.coroutines.*
 
 enum class PageStyle { SINGLE, DOUBLE, VERTICAL }
 
+// Compose ImageBitmaps on desktop wrap a native, off-heap Skia Bitmap. The GC/finalizer
+// eventually reclaims it, but since the Java-side wrapper is tiny, that can take a very long
+// time under normal heap pressure — so every replaced/discarded bitmap must be closed explicitly.
+private fun closeImageBitmap(bitmap: ImageBitmap) {
+    runCatching { bitmap.asSkiaBitmap().close() }
+}
+
 @Composable
 fun ReaderScreen(state: AppState) {
     val chapter = state.readerChapter ?: return
@@ -47,6 +54,27 @@ fun ReaderScreen(state: AppState) {
     var stretchSmallPages by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
+
+    DisposableEffect(pageImage) {
+        val toDispose = pageImage
+        onDispose { toDispose?.let(::closeImageBitmap) }
+    }
+    DisposableEffect(pageImageRight) {
+        val toDispose = pageImageRight
+        onDispose { toDispose?.let(::closeImageBitmap) }
+    }
+    DisposableEffect(allPages) {
+        val toDispose = allPages
+        onDispose { toDispose.forEach(::closeImageBitmap) }
+    }
+
+    // Long Strip decodes every page in the chapter at once; free that memory as soon as we
+    // leave Vertical mode instead of holding onto it for the rest of the chapter session.
+    LaunchedEffect(pageStyle) {
+        if (pageStyle != PageStyle.VERTICAL && allPages.isNotEmpty()) {
+            allPages = emptyList()
+        }
+    }
 
     LaunchedEffect(chapter.filePath) {
         pageNames = withContext(Dispatchers.IO) { CbzReader.listPages(chapter.filePath) }

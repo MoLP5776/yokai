@@ -59,6 +59,13 @@ private fun decodeAndDownscale(bytes: ByteArray): ImageBitmap {
     }
 }
 
+// NOTE: entries here are shared, live object instances — the same ImageBitmap handed out
+// by this cache can be held by several CoverArt composables at once (e.g. a library grid
+// tile and the series detail screen showing the same cover). That means eviction must NOT
+// close() the bitmap: doing so would invalidate it out from under whichever composable(s)
+// are still actively displaying it. The cache is bounded at COVER_CACHE_MAX_SIZE, so this is
+// a one-time bounded footprint rather than the unbounded reader leak, and can be safely left
+// for the GC/finalizer to reclaim once every composable holding it has been disposed.
 private val coverImageCache = object : LinkedHashMap<String, ImageBitmap>(COVER_CACHE_MAX_SIZE, 0.75f, true) {
     override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean {
         return size > COVER_CACHE_MAX_SIZE

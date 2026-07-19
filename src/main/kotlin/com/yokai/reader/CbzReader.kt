@@ -4,8 +4,43 @@ import androidx.compose.ui.graphics.*
 import java.io.File
 import java.util.zip.*
 import org.jetbrains.skia.Image
+import org.jetbrains.skia.Rect
+import org.jetbrains.skia.Surface
 
 private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
+
+// Single/double page mode only ever holds 1-2 decoded pages at once, so a higher cap is fine.
+private const val PAGE_MAX_DIMENSION = 2400
+
+// Long Strip holds every page of the chapter decoded at once, so it needs a tighter cap
+// to keep total memory bounded.
+private const val VERTICAL_PAGE_MAX_DIMENSION = 1600
+
+/**
+ * Decodes [bytes] into a downscaled [ImageBitmap], capping the largest dimension at
+ * [maxDimension]. The intermediate Skia [Image] is a native, off-heap resource, so it's
+ * always closed via [use] rather than left for the GC/finalizer to eventually reclaim.
+ */
+private fun decodeAndDownscale(bytes: ByteArray, maxDimension: Int): ImageBitmap {
+    return Image.makeFromEncoded(bytes).use { original ->
+        val maxDim = maxOf(original.width, original.height)
+        if (maxDim <= maxDimension) {
+            original.toComposeImageBitmap()
+        } else {
+            val scale = maxDimension.toFloat() / maxDim
+            val targetWidth = (original.width * scale).toInt().coerceAtLeast(1)
+            val targetHeight = (original.height * scale).toInt().coerceAtLeast(1)
+            Surface.makeRasterN32Premul(targetWidth, targetHeight).use { surface ->
+                surface.canvas.drawImageRect(
+                    original,
+                    Rect.makeWH(original.width.toFloat(), original.height.toFloat()),
+                    Rect.makeWH(targetWidth.toFloat(), targetHeight.toFloat()),
+                )
+                surface.makeImageSnapshot().use { scaled -> scaled.toComposeImageBitmap() }
+            }
+        }
+    }
+}
 
 object CbzReader {
 
@@ -101,7 +136,7 @@ object CbzReader {
                 val entry = allEntries[targetEntryName] ?: return null
 
                 val bytes = zip.getInputStream(entry).readBytes()
-                Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                decodeAndDownscale(bytes, PAGE_MAX_DIMENSION)
             }
         }.getOrNull()
     }
@@ -120,7 +155,7 @@ object CbzReader {
                     val name = sortedNames.getOrNull(index) ?: return null
                     val entry = allEntries[name] ?: return null
                     val bytes = zip.getInputStream(entry).readBytes()
-                    return Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                    return decodeAndDownscale(bytes, PAGE_MAX_DIMENSION)
                 }
 
                 Pair(loadAt(pageIndex), loadAt(pageIndex + 1))
@@ -142,7 +177,7 @@ object CbzReader {
                         val entry = allEntries[name] ?: return@mapNotNull null
                         runCatching {
                             val bytes = zip.getInputStream(entry).readBytes()
-                            Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                            decodeAndDownscale(bytes, VERTICAL_PAGE_MAX_DIMENSION)
                         }.getOrNull()
                     }
             }
