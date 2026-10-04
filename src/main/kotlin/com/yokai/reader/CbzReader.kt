@@ -100,8 +100,7 @@ object CbzReader {
 
                 val entry = allEntries[targetEntryName] ?: return null
 
-                val bytes = zip.getInputStream(entry).readBytes()
-                Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                decode(zip.getInputStream(entry).readBytes())
             }
         }.getOrNull()
     }
@@ -119,8 +118,7 @@ object CbzReader {
                 fun loadAt(index: Int): ImageBitmap? {
                     val name = sortedNames.getOrNull(index) ?: return null
                     val entry = allEntries[name] ?: return null
-                    val bytes = zip.getInputStream(entry).readBytes()
-                    return Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                    return decode(zip.getInputStream(entry).readBytes())
                 }
 
                 Pair(loadAt(pageIndex), loadAt(pageIndex + 1))
@@ -128,24 +126,22 @@ object CbzReader {
         }.getOrElse { Pair(null, null) }
     }
 
-    fun loadAllPages(file: File): List<ImageBitmap> {
+    /**
+     * Loads a single page by its entry name (as returned by [listPages]).
+     * Avoids re-listing and re-sorting the archive for every page, which matters
+     * for the vertical reader where pages are loaded one by one while scrolling.
+     */
+    fun loadPage(file: File, entryName: String): ImageBitmap? {
         return runCatching {
             ZipFile(file).use { zip ->
-                val allEntries = zip.entries().asSequence()
-                    .filter { !it.isDirectory }
-                    .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
-                    .associateBy { it.name }
-
-                allEntries.keys
-                    .sortedWith(naturalOrderComparator)
-                    .mapNotNull { name ->
-                        val entry = allEntries[name] ?: return@mapNotNull null
-                        runCatching {
-                            val bytes = zip.getInputStream(entry).readBytes()
-                            Image.makeFromEncoded(bytes).toComposeImageBitmap()
-                        }.getOrNull()
-                    }
+                val entry = zip.getEntry(entryName) ?: return null
+                decode(zip.getInputStream(entry).readBytes())
             }
-        }.getOrElse { emptyList() }
+        }.getOrNull()
     }
+
+    // The Skia Image holds native memory that is only released when closed (or much later
+    // by the GC finalizer), so close it as soon as it has been converted into a bitmap.
+    private fun decode(bytes: ByteArray): ImageBitmap =
+        Image.makeFromEncoded(bytes).use { it.toComposeImageBitmap() }
 }

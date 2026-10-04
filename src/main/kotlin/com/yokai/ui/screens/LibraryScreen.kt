@@ -1,6 +1,6 @@
 package com.yokai.ui.screens
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -14,7 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.*
 import androidx.compose.ui.text.font.FontWeight
@@ -236,7 +236,15 @@ private fun SeriesCard(
     var cardLayoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val coverScale by animateFloatAsState(if (isHovered) 1.08f else 1f)
+    val surface = MaterialTheme.colorScheme.surface
+    val primary = MaterialTheme.colorScheme.primary
+    val containerColor by animateColorAsState(
+        when {
+            isSelected -> primary.copy(alpha = 0.2f)
+            isHovered -> primary.copy(alpha = 0.18f).compositeOver(surface)
+            else -> surface
+        }
+    )
 
     Card(
         modifier = Modifier
@@ -266,7 +274,7 @@ private fun SeriesCard(
             },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
+            containerColor = containerColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
@@ -280,12 +288,7 @@ private fun SeriesCard(
                 CoverArt(
                     seriesDir = seriesDir,
                     metadata = metadata,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = coverScale
-                            scaleY = coverScale
-                        },
+                    modifier = Modifier.fillMaxSize(),
                     placeholderFontSize = 48.sp,
                 )
 
