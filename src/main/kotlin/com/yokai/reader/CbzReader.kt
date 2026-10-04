@@ -1,8 +1,11 @@
 package com.yokai.reader
 
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.unit.IntSize
 import java.io.File
 import java.util.zip.*
+import org.jetbrains.skia.Codec
+import org.jetbrains.skia.Data
 import org.jetbrains.skia.Image
 
 private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
@@ -138,6 +141,26 @@ object CbzReader {
                 decode(zip.getInputStream(entry).readBytes())
             }
         }.getOrNull()
+    }
+
+    /**
+     * Reads the pixel size of each page from its header without decoding the pixels, so the
+     * vertical reader can reserve every page's final height before its bitmap is loaded.
+     * Pages whose header can't be read are left out.
+     */
+    fun loadPageSizes(file: File, entryNames: List<String>): Map<String, IntSize> {
+        return runCatching {
+            ZipFile(file).use { zip ->
+                entryNames.mapNotNull { name ->
+                    val entry = zip.getEntry(name) ?: return@mapNotNull null
+                    runCatching {
+                        Data.makeFromBytes(zip.getInputStream(entry).readBytes()).use { data ->
+                            Codec.makeFromData(data).use { name to IntSize(it.width, it.height) }
+                        }
+                    }.getOrNull()
+                }.toMap()
+            }
+        }.getOrElse { emptyMap() }
     }
 
     // The Skia Image holds native memory that is only released when closed (or much later

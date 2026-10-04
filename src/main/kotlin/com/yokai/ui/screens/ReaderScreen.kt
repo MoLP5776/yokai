@@ -21,12 +21,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
 import com.yokai.reader.CbzReader
 import com.yokai.ui.AppState
 import kotlinx.coroutines.*
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 enum class PageStyle { SINGLE, DOUBLE, VERTICAL }
 
@@ -39,9 +42,10 @@ fun ReaderScreen(state: AppState) {
     var pageImage by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
     var pageImageRight by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
 
-    // Aspect ratios of pages already seen in vertical mode, so placeholders keep the right
-    // height after a page scrolls out of view and its bitmap is released.
-    val pageAspectRatios = remember(chapter.filePath) { mutableStateMapOf<String, Float>() }
+    // Pixel sizes of the pages, read up front in vertical mode so every page has its final
+    // height before (and after) its bitmap is loaded.
+    val pageSizes = remember(chapter.filePath) { mutableStateMapOf<String, IntSize>() }
+    var pageSizesLoaded by remember(chapter.filePath) { mutableStateOf(false) }
 
     var showChapterDropdown by remember { mutableStateOf(false) }
     var showPageDropdown by remember { mutableStateOf(false) }
@@ -87,6 +91,13 @@ fun ReaderScreen(state: AppState) {
                 pageImage = null
                 pageImageRight = null
             }
+        }
+    }
+
+    LaunchedEffect(chapter.filePath, pageNames, pageStyle) {
+        if (pageStyle == PageStyle.VERTICAL && !pageSizesLoaded && pageNames.isNotEmpty()) {
+            pageSizes.putAll(withContext(Dispatchers.IO) { CbzReader.loadPageSizes(chapter.filePath, pageNames) })
+            pageSizesLoaded = true
         }
     }
 
@@ -367,6 +378,10 @@ fun ReaderScreen(state: AppState) {
                     )
                 }
 
+                pageStyle == PageStyle.VERTICAL && !pageSizesLoaded -> {
+                    Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                }
+
                 pageStyle == PageStyle.VERTICAL -> {
                     // Only pages near the viewport are composed, so only those bitmaps stay in memory.
                     val listState = rememberLazyListState()
@@ -380,8 +395,8 @@ fun ReaderScreen(state: AppState) {
                                 file = chapter.filePath,
                                 entryName = name,
                                 contentDescription = "Page ${index + 1}",
-                                contentScale = if (containToWidth) ContentScale.FillWidth else ContentScale.Fit,
-                                aspectRatios = pageAspectRatios,
+                                fillWidth = containToWidth,
+                                pageSizes = pageSizes,
                             )
                         }
                         // Tap at bottom of vertical strip → next chapter
@@ -482,33 +497,48 @@ private fun VerticalPage(
     file: java.io.File,
     entryName: String,
     contentDescription: String,
-    contentScale: ContentScale,
-    aspectRatios: MutableMap<String, Float>,
+    fillWidth: Boolean,
+    pageSizes: MutableMap<String, IntSize>,
 ) {
     // Keyed to this list item: the bitmap is dropped as soon as the item leaves composition.
     val bitmap by produceState<ImageBitmap?>(null, file, entryName) {
         value = withContext(Dispatchers.IO) { CbzReader.loadPage(file, entryName) }
-            ?.also { aspectRatios[entryName] = it.width.toFloat() / it.height }
+            ?.also { pageSizes[entryName] = IntSize(it.width, it.height) }
     }
 
-    val image = bitmap
-    if (image != null) {
-        Image(
-            bitmap = image,
-            contentDescription = contentDescription,
-            contentScale = contentScale,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(aspectRatios[entryName] ?: (2f / 3f)),
-            contentAlignment = Alignment.Center,
-        ) {
+    Box(
+        modifier = Modifier.pageHeight(pageSizes[entryName], fillWidth),
+        contentAlignment = Alignment.Center,
+    ) {
+        val image = bitmap
+        if (image != null) {
+            Image(
+                bitmap = image,
+                contentDescription = contentDescription,
+                contentScale = if (fillWidth) ContentScale.FillWidth else ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
             Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
         }
     }
+}
+
+// Sizes a vertical page to the full width and exactly the height its image is drawn at
+// (FillWidth scales to the width, Fit only ever scales down), whether or not the bitmap is
+// loaded. If the height changed when the bitmap arrived, LazyColumn would shift the content
+// while scrolling up and push the reader further down the chapter.
+private fun Modifier.pageHeight(size: IntSize?, fillWidth: Boolean): Modifier = layout { measurable, constraints ->
+    val width = constraints.maxWidth
+    val height = if (size == null || size.width == 0) {
+        width * 3 / 2
+    } else {
+        val widthScale = width.toFloat() / size.width
+        val scale = if (fillWidth) widthScale else min(widthScale, 1f)
+        (size.height * scale).roundToInt()
+    }
+    val placeable = measurable.measure(Constraints.fixed(width, height))
+    layout(width, height) { placeable.place(0, 0) }
 }
 
 @Composable
