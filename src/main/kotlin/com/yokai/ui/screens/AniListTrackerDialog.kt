@@ -430,7 +430,7 @@ private fun RemoteCoverImage(url: String?, modifier: Modifier = Modifier) {
             withContext(Dispatchers.IO) {
                 runCatching {
                     val bytes: ByteArray = coverImageClient.get(it).body()
-                    SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap()
+                    SkiaImage.makeFromEncoded(bytes).use { img -> img.toComposeImageBitmap() }
                 }.getOrNull()
             }
         }

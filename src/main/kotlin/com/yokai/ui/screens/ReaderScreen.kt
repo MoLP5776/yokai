@@ -3,6 +3,9 @@ package com.yokai.ui.screens
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.*
@@ -36,7 +39,9 @@ fun ReaderScreen(state: AppState) {
     var pageImage by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
     var pageImageRight by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
 
-    var allPages by remember(chapter.filePath) { mutableStateOf<List<ImageBitmap>>(emptyList()) }
+    // Aspect ratios of pages already seen in vertical mode, so placeholders keep the right
+    // height after a page scrolls out of view and its bitmap is released.
+    val pageAspectRatios = remember(chapter.filePath) { mutableStateMapOf<String, Float>() }
 
     var showChapterDropdown by remember { mutableStateOf(false) }
     var showPageDropdown by remember { mutableStateOf(false) }
@@ -55,9 +60,6 @@ fun ReaderScreen(state: AppState) {
             pageNames.lastIndex.coerceAtLeast(0)
         } else {
             0
-        }
-        if (pageStyle == PageStyle.VERTICAL) {
-            allPages = withContext(Dispatchers.IO) { CbzReader.loadAllPages(chapter.filePath) }
         }
         focusRequester.requestFocus()
     }
@@ -81,16 +83,10 @@ fun ReaderScreen(state: AppState) {
             }
 
             PageStyle.VERTICAL -> {
-                if (allPages.isEmpty()) {
-                    allPages = withContext(Dispatchers.IO) { CbzReader.loadAllPages(chapter.filePath) }
-                }
+                // Vertical mode loads its own pages lazily; drop the paged bitmaps.
+                pageImage = null
+                pageImageRight = null
             }
-        }
-    }
-
-    LaunchedEffect(pageStyle) {
-        if (pageStyle == PageStyle.VERTICAL && allPages.isEmpty() && pageNames.isNotEmpty()) {
-            allPages = withContext(Dispatchers.IO) { CbzReader.loadAllPages(chapter.filePath) }
         }
     }
 
@@ -372,24 +368,24 @@ fun ReaderScreen(state: AppState) {
                 }
 
                 pageStyle == PageStyle.VERTICAL -> {
-                    if (allPages.isEmpty()) {
-                        Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                    } else {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            allPages.forEachIndexed { index, bitmap ->
-                                Image(
-                                    bitmap = bitmap,
-                                    contentDescription = "Page ${index + 1}",
-                                    contentScale = if (containToWidth) ContentScale.FillWidth else ContentScale.Fit,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                            // Tap at bottom of vertical strip → next chapter
+                    // Only pages near the viewport are composed, so only those bitmaps stay in memory.
+                    val listState = rememberLazyListState()
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        itemsIndexed(pageNames, key = { _, name -> name }) { index, name ->
+                            VerticalPage(
+                                file = chapter.filePath,
+                                entryName = name,
+                                contentDescription = "Page ${index + 1}",
+                                contentScale = if (containToWidth) ContentScale.FillWidth else ContentScale.Fit,
+                                aspectRatios = pageAspectRatios,
+                            )
+                        }
+                        // Tap at bottom of vertical strip → next chapter
+                        item {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -477,6 +473,40 @@ fun ReaderScreen(state: AppState) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun VerticalPage(
+    file: java.io.File,
+    entryName: String,
+    contentDescription: String,
+    contentScale: ContentScale,
+    aspectRatios: MutableMap<String, Float>,
+) {
+    // Keyed to this list item: the bitmap is dropped as soon as the item leaves composition.
+    val bitmap by produceState<ImageBitmap?>(null, file, entryName) {
+        value = withContext(Dispatchers.IO) { CbzReader.loadPage(file, entryName) }
+            ?.also { aspectRatios[entryName] = it.width.toFloat() / it.height }
+    }
+
+    val image = bitmap
+    if (image != null) {
+        Image(
+            bitmap = image,
+            contentDescription = contentDescription,
+            contentScale = contentScale,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(aspectRatios[entryName] ?: (2f / 3f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("Loading...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
         }
     }
 }
