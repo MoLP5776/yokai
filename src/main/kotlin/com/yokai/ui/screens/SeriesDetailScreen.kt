@@ -280,7 +280,7 @@ fun SeriesDetailScreen(state: AppState) {
                     )
                 }
 
-                items(paginatedChapters) { chapter ->
+                items(paginatedChapters, key = { it.filename }) { chapter ->
                     val isRead = readState[chapter.filename] == true
                     val isSelected = state.selectedChapters.contains(chapter.filename)
                     ChapterRow(
@@ -466,6 +466,8 @@ private fun ChapterRow(
     val langName = LANGUAGE_NAMES[chapter.languageCode] ?: chapter.languageCode.uppercase()
 
     var rowOffset by remember { mutableStateOf(Offset.Zero) }
+    // pointerInput(Unit) is never restarted, so read the latest callback instead of the one captured on first composition
+    val currentOnRightClick by rememberUpdatedState(onRightClick)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -485,7 +487,7 @@ private fun ChapterRow(
                             val position = event.changes.first().position
                             // Calculate global click position
                             val globalClickOffset = rowOffset + position
-                            onRightClick(DpOffset(globalClickOffset.x.toDp(), globalClickOffset.y.toDp()))
+                            currentOnRightClick(DpOffset(globalClickOffset.x.toDp(), globalClickOffset.y.toDp()))
                         }
                     }
                 }
