@@ -87,7 +87,7 @@ compose.desktop {
 
 val appImageDir = layout.buildDirectory.dir("compose/tmp/AppDir")
 
-val prepareAppImageDir by tasks.registering(Sync::class) {
+val prepareAppImageDir = tasks.register<Sync>("prepareAppImageDir") {
     description = "Assembles the AppDir used to build the AppImage"
     dependsOn("packageAppImage")
 
