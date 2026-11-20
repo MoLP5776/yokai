@@ -15,7 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
+import com.yokai.image.toReleasableImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +26,8 @@ import com.yokai.anilist.AniListLibraryEntry
 import com.yokai.anilist.AniListManga
 import com.yokai.metadata.SeriesMetadata
 import com.yokai.ui.AppState
+import com.yokai.image.ReleaseOnDispose
+import com.yokai.image.loadBitmap
 import com.yokai.ui.openInBrowser
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -425,12 +427,17 @@ private fun statusLabel(status: String?): String = when (status) {
 private fun RemoteCoverImage(url: String?, modifier: Modifier = Modifier) {
     var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
 
+    // Each search result decodes its own cover; free it when the result goes away.
+    ReleaseOnDispose(bitmap)
+
     LaunchedEffect(url) {
         bitmap = url?.let {
-            withContext(Dispatchers.IO) {
+            val bytes = withContext(Dispatchers.IO) {
+                runCatching { coverImageClient.get(it).body<ByteArray>() }.getOrNull()
+            } ?: return@LaunchedEffect
+            loadBitmap {
                 runCatching {
-                    val bytes: ByteArray = coverImageClient.get(it).body()
-                    SkiaImage.makeFromEncoded(bytes).use { img -> img.toComposeImageBitmap() }
+                    SkiaImage.makeFromEncoded(bytes).use { img -> img.toReleasableImageBitmap() }
                 }.getOrNull()
             }
         }

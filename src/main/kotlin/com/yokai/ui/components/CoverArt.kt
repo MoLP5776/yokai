@@ -18,30 +18,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.yokai.metadata.MetadataRepository
+import com.yokai.image.ImageDecodeDispatcher
+import com.yokai.image.toReleasableImageBitmap
 import com.yokai.metadata.SeriesMetadata
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Surface
 import org.jetbrains.skia.Image as SkiaImage
 import java.io.File
 
-private const val COVER_CACHE_MAX_SIZE = 400
+// Covers are drawn at a few hundred pixels wide in the grid, so 600px on the long side still
+// looks sharp (also on HiDPI) while taking about a third of the memory of 800px.
+private const val COVER_MAX_DIMENSION = 600
 
-
-private const val COVER_MAX_DIMENSION = 800
+// The cache is bounded by the pixel memory it holds rather than by a number of entries:
+// 400 covers at 800px used to be able to pin roughly 680 MB of native memory.
+private const val COVER_CACHE_MAX_BYTES = 96L * 1024 * 1024
 
 private fun decodeAndDownscale(bytes: ByteArray): ImageBitmap {
     val original = SkiaImage.makeFromEncoded(bytes)
     val maxDim = maxOf(original.width, original.height)
     if (maxDim <= COVER_MAX_DIMENSION) {
-        return original.use { it.toComposeImageBitmap() }
+        return original.use { it.toReleasableImageBitmap() }
     }
 
     return original.use {
@@ -54,14 +57,31 @@ private fun decodeAndDownscale(bytes: ByteArray): ImageBitmap {
                 Rect.makeWH(it.width.toFloat(), it.height.toFloat()),
                 Rect.makeWH(targetWidth.toFloat(), targetHeight.toFloat()),
             )
-            surface.makeImageSnapshot().use { scaled -> scaled.toComposeImageBitmap() }
+            surface.makeImageSnapshot().use { scaled -> scaled.toReleasableImageBitmap() }
         }
     }
 }
 
-private val coverImageCache = object : LinkedHashMap<String, ImageBitmap>(COVER_CACHE_MAX_SIZE, 0.75f, true) {
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean {
-        return size > COVER_CACHE_MAX_SIZE
+private object CoverImageCache {
+    private val entries = LinkedHashMap<String, ImageBitmap>(64, 0.75f, true)
+    private var totalBytes = 0L
+
+    private val ImageBitmap.byteSize get() = width.toLong() * height * 4
+
+    @Synchronized
+    operator fun get(key: String): ImageBitmap? = entries[key]
+
+    // Evicted bitmaps are not released here: a card on screen may still be drawing one. Once
+    // no card references it, the GC (see the periodic GC in build.gradle.kts) frees it.
+    @Synchronized
+    operator fun set(key: String, bitmap: ImageBitmap) {
+        entries.put(key, bitmap)?.let { totalBytes -= it.byteSize }
+        totalBytes += bitmap.byteSize
+        val iterator = entries.values.iterator()
+        while (totalBytes > COVER_CACHE_MAX_BYTES && entries.size > 1 && iterator.hasNext()) {
+            totalBytes -= iterator.next().byteSize
+            iterator.remove()
+        }
     }
 }
 
@@ -79,18 +99,18 @@ fun CoverArt(
         coverOverride ?: seriesDir?.let { MetadataRepository.resolveCoverFile(it, metadata) }
     }
     var bitmap by remember(coverFile?.absolutePath, coverFile?.lastModified()) {
-        val cached = coverFile?.let { synchronized(coverImageCache) { coverImageCache[coverCacheKey(it)] } }
+        val cached = coverFile?.let { CoverImageCache[coverCacheKey(it)] }
         mutableStateOf(cached)
     }
 
     LaunchedEffect(coverFile?.absolutePath, coverFile?.lastModified()) {
         if (bitmap != null) return@LaunchedEffect
         bitmap = coverFile?.let { file ->
-            withContext(Dispatchers.IO) {
+            withContext(ImageDecodeDispatcher) {
                 runCatching {
                     decodeAndDownscale(file.readBytes())
                 }.getOrNull()?.also { decoded ->
-                    synchronized(coverImageCache) { coverImageCache[coverCacheKey(file)] = decoded }
+                    CoverImageCache[coverCacheKey(file)] = decoded
                 }
             }
         }

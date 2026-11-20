@@ -7,6 +7,7 @@ import java.util.zip.*
 import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
 import org.jetbrains.skia.Image
+import com.yokai.image.toReleasableImageBitmap
 
 private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
 
@@ -88,47 +89,6 @@ object CbzReader {
         }
     }
 
-    fun loadPage(file: File, pageIndex: Int): ImageBitmap? {
-        return runCatching {
-            ZipFile(file).use { zip ->
-                val allEntries = zip.entries().asSequence()
-                    .filter { !it.isDirectory }
-                    .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
-                    .associateBy { it.name }
-
-                val sortedEntryNames = allEntries.keys
-                    .sortedWith(naturalOrderComparator)
-
-                val targetEntryName = sortedEntryNames.getOrNull(pageIndex) ?: return null
-
-                val entry = allEntries[targetEntryName] ?: return null
-
-                decode(zip.getInputStream(entry).readBytes())
-            }
-        }.getOrNull()
-    }
-
-    fun loadTwoPages(file: File, pageIndex: Int): Pair<ImageBitmap?, ImageBitmap?> {
-        return runCatching {
-            ZipFile(file).use { zip ->
-                val allEntries = zip.entries().asSequence()
-                    .filter { !it.isDirectory }
-                    .filter { it.name.substringAfterLast('.').lowercase() in imageExtensions }
-                    .associateBy { it.name }
-
-                val sortedNames = allEntries.keys.sortedWith(naturalOrderComparator)
-
-                fun loadAt(index: Int): ImageBitmap? {
-                    val name = sortedNames.getOrNull(index) ?: return null
-                    val entry = allEntries[name] ?: return null
-                    return decode(zip.getInputStream(entry).readBytes())
-                }
-
-                Pair(loadAt(pageIndex), loadAt(pageIndex + 1))
-            }
-        }.getOrElse { Pair(null, null) }
-    }
-
     /**
      * Loads a single page by its entry name (as returned by [listPages]).
      * Avoids re-listing and re-sorting the archive for every page, which matters
@@ -166,5 +126,5 @@ object CbzReader {
     // The Skia Image holds native memory that is only released when closed (or much later
     // by the GC finalizer), so close it as soon as it has been converted into a bitmap.
     private fun decode(bytes: ByteArray): ImageBitmap =
-        Image.makeFromEncoded(bytes).use { it.toComposeImageBitmap() }
+        Image.makeFromEncoded(bytes).use { it.toReleasableImageBitmap() }
 }

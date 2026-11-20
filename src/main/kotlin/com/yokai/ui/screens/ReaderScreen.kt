@@ -25,7 +25,10 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
+import com.yokai.image.ReleaseOnDispose
+import com.yokai.image.loadBitmap
 import com.yokai.reader.CbzReader
+import com.yokai.reader.PageCache
 import com.yokai.ui.AppState
 import kotlinx.coroutines.*
 import kotlin.math.min
@@ -41,6 +44,12 @@ fun ReaderScreen(state: AppState) {
 
     var pageImage by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
     var pageImageRight by remember(chapter.filePath, pageIndex) { mutableStateOf<ImageBitmap?>(null) }
+
+    // Owns every page bitmap shown in single/double mode. A full page is often 10-20 MB of native
+    // pixels, so all of them are released as soon as the chapter changes or the reader closes.
+    val pageScope = rememberCoroutineScope()
+    val pageCache = remember(chapter.filePath, pageNames) { PageCache(chapter.filePath, pageNames, pageScope) }
+    DisposableEffect(pageCache) { onDispose { pageCache.clear() } }
 
     // Pixel sizes of the pages, read up front in vertical mode so every page has its final
     // height before (and after) its bitmap is loaded.
@@ -68,30 +77,42 @@ fun ReaderScreen(state: AppState) {
         focusRequester.requestFocus()
     }
 
-    LaunchedEffect(chapter.filePath, pageIndex, pageStyle) {
-        when (pageStyle) {
+    LaunchedEffect(pageCache, pageIndex, pageStyle) {
+        // Pages kept decoded around the current one, so flipping back and forth (or forward)
+        // reuses them instead of decoding every page again.
+        val keep = when (pageStyle) {
             PageStyle.SINGLE -> {
-                pageImage = null
-                pageImage = withContext(Dispatchers.IO) { CbzReader.loadPage(chapter.filePath, pageIndex) }
                 pageImageRight = null
+                pageImage = pageCache.get(pageIndex)
+                pageCache.prefetch(pageIndex + 1)
+                pageCache.prefetch(pageIndex - 1)
+                pageIndex - 1..pageIndex + 1
             }
 
             PageStyle.DOUBLE -> {
-                pageImage = null
-                pageImageRight = null
-                val (left, right) = withContext(Dispatchers.IO) {
-                    CbzReader.loadTwoPages(chapter.filePath, pageIndex)
-                }
+                pageCache.prefetch(pageIndex + 1) // decode both halves in parallel
+                val left = pageCache.get(pageIndex)
+                val right = pageCache.get(pageIndex + 1)
                 pageImage = left
                 pageImageRight = right
+                pageCache.prefetch(pageIndex + 2)
+                pageCache.prefetch(pageIndex + 3)
+                pageCache.prefetch(pageIndex - 2)
+                pageCache.prefetch(pageIndex - 1)
+                pageIndex - 2..pageIndex + 3
             }
 
             PageStyle.VERTICAL -> {
                 // Vertical mode loads its own pages lazily; drop the paged bitmaps.
                 pageImage = null
                 pageImageRight = null
+                IntRange.EMPTY
             }
         }
+        // Wait until a frame showing the new pages has been composed, so nothing released here
+        // can still be drawn.
+        withFrameNanos { }
+        pageCache.retainOnly(keep)
     }
 
     LaunchedEffect(chapter.filePath, pageNames, pageStyle) {
@@ -502,9 +523,10 @@ private fun VerticalPage(
 ) {
     // Keyed to this list item: the bitmap is dropped as soon as the item leaves composition.
     val bitmap by produceState<ImageBitmap?>(null, file, entryName) {
-        value = withContext(Dispatchers.IO) { CbzReader.loadPage(file, entryName) }
+        value = loadBitmap { CbzReader.loadPage(file, entryName) }
             ?.also { pageSizes[entryName] = IntSize(it.width, it.height) }
     }
+    ReleaseOnDispose(bitmap)
 
     Box(
         modifier = Modifier.pageHeight(pageSizes[entryName], fillWidth),
