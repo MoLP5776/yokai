@@ -136,7 +136,11 @@ val prepareAppImageDir = tasks.register<Sync>("prepareAppImageDir") {
             exec "${'$'}HERE/bin/$appPackageName" "${'$'}@"
             """.trimIndent() + "\n"
         )
-        appRun.setExecutable(true)
+        // AppImages run as users other than the one who built them, so AppRun must be
+        // readable and executable by everyone (0755); appimagetool rejects owner-only modes.
+        // setExecutable(true) alone only sets the owner bit.
+        appRun.setReadable(true, false)
+        appRun.setExecutable(true, false)
     }
 }
 
