@@ -54,8 +54,15 @@ compose.desktop {
     application {
         mainClass = appMainClass
 
+        // Memory tuning (periodic GC, heap shrinking, native heap trimming) is applied at
+        // startup in com.yokai.image.MemoryTuning, so it also works from IDE run configurations.
+
         nativeDistributions {
             targetFormats(*desiredTargetFormats)
+
+            // MemoryTuning needs the HotSpot diagnostic MXBeans, which the trimmed runtime
+            // bundled with the packaged app would otherwise leave out.
+            modules("java.management", "jdk.management")
 
             packageName    = appPackageName
             packageVersion = "1.0.0"
